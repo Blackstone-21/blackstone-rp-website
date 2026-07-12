@@ -132,3 +132,7 @@ The bot needs View Channel, Read Message History, Send Messages and Embed Links 
 - Discord sign-in always requests the Admin destination.
 - Accounts without the `dashboard.view` permission are returned to the staff login page.
 - The public Community Hub no longer exposes its former member sign-in modal.
+
+## v4.4 admin login layout fix
+
+The administration login is now centred across desktop and mobile layouts. Protected admin navigation remains fully hidden until authentication succeeds, preventing the sidebar from appearing over the login screen while the session is checked.
