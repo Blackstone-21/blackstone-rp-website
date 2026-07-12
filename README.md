@@ -12,7 +12,7 @@ This build includes optimized WebP assets, static caching, shared live-status ca
 The mobile-app functions are now available through the website:
 
 - `portal.html` — community hub with live server information, announcements, departments, events, staff, featured images, staff access and editable profile/character details.
-- `apply.html` — guided civilian, Police, EMS and Staff application form connected to the staff review queue.
+- `apply.html` — guided civilian, Police, EMS, Fire and Staff application form connected to the staff review queue.
 - `admin.html` — secure role-based administration panel.
 - `api/portal.js` and `server/portal-core.cjs` — shared Vercel backend and data layer.
 
@@ -136,3 +136,11 @@ The bot needs View Channel, Read Message History, Send Messages and Embed Links 
 ## v4.4 admin login layout fix
 
 The administration login is now centred across desktop and mobile layouts. Protected admin navigation remains fully hidden until authentication succeeds, preventing the sidebar from appearing over the login screen while the session is checked.
+
+
+## v4.5 Fire Department update
+
+- Added Fire Department applications to the public application portal.
+- Added Fire to the homepage department selector and Community Hub department data.
+- Added a safe one-time database migration so existing Vercel deployments receive the Fire Department without deleting current departments or applications.
+- Fire is available automatically in Admin member and role department lists.

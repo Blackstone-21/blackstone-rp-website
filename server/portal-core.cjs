@@ -420,13 +420,14 @@ function defaultData() {
     ],
     announcements: [
       { id: 'announcement_launch', title: 'Development in progress', body: 'Blackstone RP is not open to the public yet. Join Discord to follow development and launch updates.', category: 'Development', pinned: true, published: true, createdAt, updatedAt: createdAt },
-      { id: 'announcement_recruitment', title: 'Department recruitment', body: 'Police, EMS and community staff applications will open as staffing needs are confirmed.', category: 'Recruitment', pinned: false, published: true, createdAt, updatedAt: createdAt }
+      { id: 'announcement_recruitment', title: 'Department recruitment', body: 'Police, EMS, Fire and community staff applications will open as staffing needs are confirmed.', category: 'Recruitment', pinned: false, published: true, createdAt, updatedAt: createdAt }
     ],
     departments: [
       { id: 'department_police', name: 'Police', code: 'LSPD // 01', tagline: 'Protect. Serve. Investigate.', description: 'Patrol the city, respond to critical incidents, investigate organised crime and build cases with advanced policing tools.', features: ['Structured ranks and training', 'Specialist divisions', 'Advanced evidence systems'], open: true, published: true, sortOrder: 1, createdAt, updatedAt: createdAt },
       { id: 'department_ems', name: 'EMS', code: 'EMS // 02', tagline: 'Respond. Stabilise. Care.', description: 'Provide emergency medical response, hospital care and realistic medical roleplay across Los Santos.', features: ['Medical training pathways', 'Ambulance and hospital roles', 'Meaningful patient roleplay'], open: true, published: true, sortOrder: 2, createdAt, updatedAt: createdAt },
-      { id: 'department_civilian', name: 'Civilian', code: 'CIV // 03', tagline: 'Build a life. Create a legacy.', description: 'Create businesses, careers, friendships and long-running stories in a player-driven city.', features: ['Player-owned businesses', 'Civilian careers', 'Character-led stories'], open: true, published: true, sortOrder: 3, createdAt, updatedAt: createdAt },
-      { id: 'department_criminal', name: 'Criminal', code: 'CRIM // 04', tagline: 'Take risks. Face consequences.', description: 'Build layered criminal stories with progression, investigations and consequences that respect serious roleplay.', features: ['Progressive opportunities', 'Investigation-driven scenes', 'Balanced risk and reward'], open: true, published: true, sortOrder: 4, createdAt, updatedAt: createdAt }
+      { id: 'department_fire', name: 'Fire Department', code: 'FIRE // 03', tagline: 'Respond. Rescue. Protect.', description: 'Fight fires, perform technical rescues, manage hazardous incidents and support major emergency scenes across Los Santos.', features: ['Fire and rescue training', 'Specialist response units', 'Major incident operations'], open: true, published: true, sortOrder: 3, createdAt, updatedAt: createdAt },
+      { id: 'department_civilian', name: 'Civilian', code: 'CIV // 04', tagline: 'Build a life. Create a legacy.', description: 'Create businesses, careers, friendships and long-running stories in a player-driven city.', features: ['Player-owned businesses', 'Civilian careers', 'Character-led stories'], open: true, published: true, sortOrder: 4, createdAt, updatedAt: createdAt },
+      { id: 'department_criminal', name: 'Criminal', code: 'CRIM // 05', tagline: 'Take risks. Face consequences.', description: 'Build layered criminal stories with progression, investigations and consequences that respect serious roleplay.', features: ['Progressive opportunities', 'Investigation-driven scenes', 'Balanced risk and reward'], open: true, published: true, sortOrder: 5, createdAt, updatedAt: createdAt }
     ],
     events: [
       { id: 'event_community', title: 'Community Night', description: 'Street meet, cruise and community roleplay night. Final time will be confirmed in Discord.', startsAt: '', location: 'Los Santos', published: true, createdAt, updatedAt: createdAt }
@@ -626,12 +627,49 @@ async function runDataMigrations(env) {
   return true;
 }
 
+async function runFireDepartmentMigration(env) {
+  const migrationKey = `${PREFIX}migration:v4-fire-department`;
+  const completed = await redisCommand(env, ['GET', migrationKey]);
+  if (completed === '1') return false;
+
+  const defaults = defaultData();
+  const departments = await getJson(env, 'departments', defaults.departments);
+  const fireDefault = defaults.departments.find((department) => department.id === 'department_fire');
+  const hasFireDepartment = departments.some((department) => {
+    const id = String(department.id || '').toLowerCase();
+    const name = String(department.name || '').toLowerCase();
+    return id === 'department_fire' || /(^|\s)fire(\s|$)/.test(name);
+  });
+
+  if (!hasFireDepartment && fireDefault) {
+    const civilian = departments.find((department) => department.id === 'department_civilian');
+    if (civilian) {
+      if (civilian.code === 'CIV // 03') civilian.code = 'CIV // 04';
+      if (Number(civilian.sortOrder) === 3) civilian.sortOrder = 4;
+    }
+
+    const criminal = departments.find((department) => department.id === 'department_criminal');
+    if (criminal) {
+      if (criminal.code === 'CRIM // 04') criminal.code = 'CRIM // 05';
+      if (Number(criminal.sortOrder) === 4) criminal.sortOrder = 5;
+    }
+
+    departments.push(structuredClone(fireDefault));
+    departments.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    await setJson(env, 'departments', departments);
+  }
+
+  await redisCommand(env, ['SET', migrationKey, '1']);
+  return !hasFireDepartment;
+}
+
 async function ensureSeeded(env) {
   if (!isRedisConfigured(env)) return { configured: false, seeded: false };
   const seeded = await redisCommand(env, ['GET', `${PREFIX}seeded`]);
   if (seeded === '1') {
     await ensureBootstrapAdmin(env);
     await runDataMigrations(env);
+    await runFireDepartmentMigration(env);
     return { configured: true, seeded: true };
   }
 
@@ -652,6 +690,7 @@ async function ensureSeeded(env) {
   await redisPipeline(env, commands);
   await ensureBootstrapAdmin(env);
   await runDataMigrations(env);
+  await runFireDepartmentMigration(env);
   return { configured: true, seeded: true };
 }
 

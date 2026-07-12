@@ -106,19 +106,26 @@
       items: ['Clinical training pathways', 'Emergency response units', 'Hospital roleplay systems'],
       num: '02'
     },
+    fire: {
+      code: 'FIRE // 03',
+      title: 'Respond. Rescue. Protect.',
+      text: 'Fight fires, perform technical rescues, manage hazardous incidents and support major emergency scenes across the city.',
+      items: ['Fire and rescue training', 'Specialist response units', 'Major incident operations'],
+      num: '03'
+    },
     civilian: {
-      code: 'CIV // 03',
+      code: 'CIV // 04',
       title: 'Create. Trade. Build.',
       text: 'Start a business, develop relationships, build a career and shape the social and economic life of Blackstone.',
       items: ['Player-owned businesses', 'Custom civilian careers', 'Property and lifestyle progression'],
-      num: '03'
+      num: '04'
     },
     criminal: {
-      code: 'ORG // 04',
+      code: 'ORG // 05',
       title: 'Plan. Risk. Rise.',
       text: 'Build your network through street-level crime, organised operations and high-risk opportunities with real consequences.',
       items: ['Progressive criminal systems', 'Gang and organisation pathways', 'Investigation-driven consequences'],
-      num: '04'
+      num: '05'
     }
   };
 
