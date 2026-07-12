@@ -1,0 +1,141 @@
+Blackstone RP Rules and Regulations
+
+Blackstone RP is committed to providing a professional, realistic, and respectful roleplay environment based in Los Santos. These rules exist to protect the integrity of our scenes and the experience of our members.
+
+
+Notes: 
+Blackstone RP may be abbreviated to BSRP for simplicity.
+Amendments to this document may be made without notice. You are expected to keep up to date with the current rules and regulations.
+BSRP Administration reserves the right to interpret these rules at their discretion. Punishments may include warnings, suspensions, removals from departments, or permanent bans depending on severity and history. Not all punishments will follow a set progression.
+
+Respect.
+Every single member, whether or not they hold a departmental, administration, board of directors or other position shall be shown respect.
+Public arguments or hostile disputes in community channels or voice channels are not permitted.
+Staff decisions are binding unless formally reviewed by senior Administration. Should you feel that a decision was unjust or unfair, please get in contact with a different staff member.
+Cursing is permitted in moderation. There is absolutely no need or tolerance for every one of your messages to contain an F bomb.
+Any and all sexual harassment is strictly prohibited. There is no tolerance and you will be banned instantly.
+We strictly prohibit any form of racism, discrimination, or derogatory comments targeting any individual or group based on their race, ethnicity, nationality, religion, gender, sexual orientation, or any other protected characteristic.
+
+2. Abuse of Channels.
+Offices and Channels are not to be used to exclude members.
+Channels will only be used for their respective content.
+Channel content may NOT be used for in-game knowledge.
+Music or soundboards or other undesirable sounds are NOT allowed in voice channels.
+
+3. Abuse of Power.
+Any role that gives one special powers that are not normally obtained is not to be abused in any way. This includes but is not limited to:
+(a) Kicking or banning or timing out members for no legitimate reason.
+(b) Muting, deafening, or moving members from voice channels without a legitimate reason.
+(c) Teleporting to and/or summoning players and/or spectating players without a legitimate reason.
+(d) Using @here or @everyone or mentioning specific roles in Discord posts without a legitimate reason.
+(e) Impersonation of staff is strictly prohibited.
+
+* A “legitimate reason” is defined as one directly related to rule enforcement, community safety, or administrative necessity as determined by Staff.
+
+4. Selling or Sharing of Content.
+Sharing or selling pornographic or illegal content is strictly prohibited and you will face a ban immediately. You will also be reported to the appropriate authorities.
+Sharing or selling of illegally obtained goods or materials is strictly prohibited and you will face a ban. This includes but is not limited to: pirated software or content, firearms, leaked content, etc.
+In-game assets may not be sold for real world currency or items.
+Sharing or selling of slandering materials is prohibited.
+Sharing or selling of embarrassing or unwanted media content of members or other persons is prohibited.
+
+5. Profile Features
+Avatars, display names, or biographies may not contain any slandering or NSFW content.
+Avatars, display names, biographies, or About Me sections may not contain content that may be considered impersonation of another member.
+While we have no naming scheme like some other communities, you are expected to share the same name, or close to, across the platforms we use in our community. The only exception to this is in-game character names.
+
+6. Staff Members
+Staff members are members who hold any of the roles in Discord mentioned below. They may be referred to as “Staff” throughout this document.
+The Founder (Gold ‘Founder’ role in Discord) may do the following:
+Issue warnings and punishments for community violations and patrol violations if an admin or moderator is not available.
+Discipline members regardless of rank or division if a moderator or admin is not available.
+Ask for proof of age or some form of identification* that clearly shows your name and date of birth.
+Appoint members to moderator positions with or without a prior application.
+Community Managers (Red/White ‘Community Manager’ role in Discord) may do the following:
+Issue warnings and punishments for community violations and patrol violations.
+Discipline members regardless of rank or division.
+Ask for proof of age or some form of identification* that clearly shows your name and date of birth.
+Appoint members to moderator positions who have submitted an application.
+Moderators (Red ‘Moderator’ role in Discord) and Admins* (Purple ‘Admin’ role in Discord) may do the following:
+(a) Issue warnings and punishments for community violations and patrol violations.
+(b) Discipline members regardless of rank or division.
+(c) Ask for proof of age or some form of identification* that clearly shows your name and date of birth.
+(d) Appoint members to department positions at the request of department heads.
+
+* “Admin(s)” is inclusive of Head Admin and Senior Admins.
+* Any identification requested will not be stored unless legally required.
+Staff authority applies strictly in an out-of-character administrative capacity. Staff members may not use administrative powers to influence in-character outcomes unless enforcing a rule violation.
+
+7. In-Game/Patrols
+Push to talk is required at all times in in-game voice chat.
+All members are required to have a working and clear microphone.
+Emergency personnel are required to use their respective patrol frequencies while on duty.
+Members are required to be focussed on the patrol at all times while they are logged on the FiveM server. We have an AFK script that will kick you after 10 mins if you are not actively engaged.
+Any time on the FiveM server must be respected as an active patrol unless the server is explicitly declared in development mode, training mode, or otherwise designated by Administration.
+Trainers or scripts that are not provided by BSRP are prohibited and their use will result in you being banned from the FiveM server.
+Metagaming is using information outside of your character’s knowledge for your character’s benefit. (i.e. Watching another member’s stream and going to their location to force an RP scene or using knowledge from OOC). Metagaming is not allowed in any capacity while active on the BSRP FiveM server. Stream sniping falls under this rule.
+Powergaming is when someone abuses an in-game mechanic or in-game text chat to favour a situation to themselves and to gain an advantage in RP. (i.e. /me grabs items off the shelf without anyone or the cameras seeing.”). Powergaming is not allowed in any capacity while active on the BSRP FiveM server. Powergaming has many different variations and if any doubt over a situation may arise, staff will decide whether to void the situation entirely or revert the situation back to a previous state.
+Force RP is forcing an action or text on another member without giving them a chance to react or a choice in the situation. Each member is in charge of their destiny and must be given a chance to roleplay accordingly in response to the member’s prompts. Force RP is not allowed in any capacity while active on the BSRP FiveM server.
+Initiating a pursuit without reasonable in-character justification is prohibited. There’s no need for all traffic stops to end in a pursuit, it gets very old very quickly. Constantly starting pursuits without provocation or reason will result in punishment.
+Gun violence is allowed but we expect competent and moderated use to ensure everyone can enjoy their time in the server.
+If you wish to create a large-scale scene, please contact a member of staff first for approval and they can help you coordinate it.
+Members should operate their vehicles in a realistic manner, taking into account factors such as vehicle handling, acceleration, braking, and general road conditions. Extreme stunts, jumps, or actions that defy the laws of physics.
+Hitman RP is not allowed in any capacity. It is a form of RDM and is unfair to other players.
+At all times during active patrols, characters must demonstrate a realistic preservation of life. Claiming a character trait (e.g., fearlessness, instability) does not exempt a member from this rule. i.e., If held at gunpoint, your character should comply with all given commands.
+Random deathmatch (RDM)/vehicle deathmatch (VDM) is the act of killing or harming another member with little or without any valid in-character reason. This is strictly prohibited.
+Inserting yourself into active RP scenarios that you have no involvement in or reason to get involved is strictly prohibited.
+Combat logging, which is the act of disconnecting from the server in order to avoid punishment or specific consequences to your character, is prohibited.
+New life rule. If your character is sent to hospital after being “killed”, you are not to return to the last RP scene. You may not reference, act upon, or use any knowledge obtained from that prior scene.
+Use of soft insults is permitted only when used reasonably during an RP scene. Racism, gender or sexual orientation slurs, the C word, the R word referring to disabled people, or other hard insults is strictly prohibited.
+Fail Roleplay, or FRP, is when a person fails to roleplay properly, whether that be through going down an unrealistic RP pathway or by intentionally disrupting the roleplay of others by trolling. This is strictly prohibited.
+Cop baiting is the act of intentionally trying to draw attention to yourself in a location where there is reasonable expectation to find police and force them to interact with you, usually to start a pursuit. This is prohibited. All interactions with police must be natural.
+When police are investigating a crime you committed after the fact and are using actions such as “what do I find?” or “what do I see?”, you must respond in gooc with honest answers within reason to what the officer(s) are/is looking at. (For example, an officer asks what they see on a valid CCTV camera at a 24/7 store after you steal an item. You must reply with your clothing at the time, a clear timeline of events within reasonable viewing distance of the aforementioned camera, and whether or not an item was actually taken.)
+Troll behaviour is any intentional conduct aimed at disrupting roleplay, provoking other players, or causing unnecessary annoyance for personal amusement. This is prohibited.
+Corrupt RP. Any roleplay where an emergency services character engages in criminal, dishonest, unethical, or authority-abusing conduct. This is strictly prohibited under all circumstances.
+Staff may pause or void any roleplay scene if a rule violation occurs.
+There shall be no roleplay involving the theft of or attempt of theft of emergency vehicles/emergency equipment.
+
+8. Respect the Admin Team and Their Decisions
+Do not ask for promotions or special access to areas hidden to you.
+Do not disrespect decisions made by Staff or Moderators. Follow the Chain of Command to voice your concerns.
+If you are involved in any investigation conducted by the Staff or Moderator team, you are expected to remain truthful and as detailed as possible when interviewed.
+Do not disrespect the Staff or Moderator team in any way.
+When requested, you must assist the Staff or Moderator team in an investigation.
+All players who experience any issues, concerns, or technical difficulties within the FiveM server must submit a support request through the designated ticket system available on the official Discord server. Directly contacting, messaging, or otherwise attempting to seek support from staff members through private messages, direct messages, or any communication channel outside of the official ticket system is strictly prohibited and will not be acknowledged or responded to.
+
+9. Other Communities
+Members are allowed to be a part of other communities.
+Members who are in multiple communities are expected to continue to be active within BSRP and participate in patrols. This is especially true for members who hold a rank in any department.
+Members in multiple communities shall not spread false information or post slandering content about BSRP.
+Recruiting (poaching) any current BSRP members for other communities is prohibited and will be met with a ban.
+
+10. BSRP Media
+Recordings and images of your experience within BSRP are permitted.
+Only BSRP members holding the appropriate “Media Team” role in Discord are allowed to post on official BSRP social media accounts.
+By participating in BSRP, you grant BSRP a non-exclusive right to share and repost media created within the community with appropriate credit.
+BSRP is not responsible for communications outside of the designated BSRP services and assets (i.e. Snapchat, Kik, Facebook Messenger, etc), however, exclusions include but are not limited to: threats or extreme disrespect towards BSRP members or assets.
+The language to be used across all BSRP services and assets is English, RP scenes are an exception.
+If intoxication visibly impacts judgement, behaviour, communication, or roleplay quality, Staff may remove the member from BSRP services and assets.
+Inappropriate or offensive FiveM disconnect messages, Discord statuses/about me’s, away messages, etc are strictly prohibited.
+All content you create and share may NOT contain any non-constructive criticism, disrespectful comments about BSRP or its members, false information or accusations towards BSRP or its members, false sponsorships or associations with brand names. Violations of this rule WILL result in immediate termination.
+
+11. Privacy and Security
+Any personal information shared is at your own risk. BSRP will not be responsible for any information leaked.
+You are the sole owner of your account. It is not recommended for you to share your account with anyone else as any rule violations made by another person using your account will be served to your account.
+BSRP members will be restricted to one account across all BSRP services and assets. If found that you have multiple accounts, they will be removed.
+
+12. Miscellaneous
+Members shall not be making any purchases for BSRP without prior consent from the Founder, Co Founder, or developers.
+If you are inactive for an extended period of time, you will be removed from any ranks you hold and will have to reapply for your department if you come back. If you remain inactive, your membership will be terminated. Exceptions to this rule are in the form of leave of absence requests.
+Providing false information or falsifying any documents within the BSRP community will result in a permanent termination.
+At no point are you allowed to use the name of another member or a member of staff.
+Any projects or assets made for BSRP shall have ownership transferred to the Founders.
+BSRP members shall abide by the ToS, Rules and Regulations, Department policies, procedures, and guidelines at all times.
+Assisting a member who has been banned with ban evasion or providing details to a member who has been banned is prohibited.
+Exploiting technicalities, ambiguous wording, or perceived loopholes in this document to justify disruptive behaviour is prohibited.
+
+
+
+This document is the property of Blackstone RP. You are not to copy or reproduce any information within this document to anyone or for your own community. Should we find you are distributing parts of this document, your position will be reconsidered and membership to our community will be revoked..
+
+© Blackstone RP 2026
