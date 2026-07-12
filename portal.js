@@ -76,6 +76,31 @@
       const body = document.createElement('p');
       body.textContent = escapeText(item.body);
       article.append(header, title, body);
+      if (item.imageUrl && /^https:\/\//i.test(String(item.imageUrl))) {
+        const image = document.createElement('img');
+        image.className = 'announcement-image';
+        image.src = item.imageUrl;
+        image.alt = escapeText(item.title || 'Announcement image');
+        image.loading = 'lazy';
+        article.appendChild(image);
+      }
+      if (item.discordUrl || item.authorName) {
+        const footer = document.createElement('footer');
+        if (item.authorName) {
+          const author = document.createElement('span');
+          author.textContent = `Posted by ${escapeText(item.authorName)}`;
+          footer.appendChild(author);
+        }
+        if (item.discordUrl && /^https:\/\/discord\.com\//i.test(String(item.discordUrl))) {
+          const link = document.createElement('a');
+          link.href = item.discordUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = 'View in Discord ↗';
+          footer.appendChild(link);
+        }
+        article.appendChild(footer);
+      }
       container.appendChild(article);
     });
   }

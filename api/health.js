@@ -13,6 +13,7 @@ module.exports = async function handler(req, res) {
     process.env.DISCORD_GUILD_ID
   );
   const galleryConfigured = Boolean(process.env.DISCORD_BOT_TOKEN && (process.env.DISCORD_GALLERY_CHANNEL_ID || '1520414735772811394'));
+  const announcementsConfigured = Boolean(process.env.DISCORD_BOT_TOKEN && (process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID || '1520408782520193115'));
 
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -24,6 +25,7 @@ module.exports = async function handler(req, res) {
     authConfigured,
     discordOAuthConfigured,
     galleryConfigured,
+    announcementsConfigured,
     callbackUrl: `${String(process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '')}/api/discord-callback`,
     checkedAt: new Date().toISOString()
   }));

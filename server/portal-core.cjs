@@ -67,6 +67,241 @@ function bool(value, fallback = false) {
   return fallback;
 }
 
+
+
+const DISCORD_API_BASE = 'https://discord.com/api/v10';
+const DEFAULT_ANNOUNCEMENTS_CHANNEL_ID = '1520408782520193115';
+let discordAnnouncementsCache = { channelId: '', expiresAt: 0, items: [] };
+
+function discordAnnouncementsChannelId(env) {
+  const value = cleanText(env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID || DEFAULT_ANNOUNCEMENTS_CHANNEL_ID, 30);
+  return /^\d{15,22}$/.test(value) ? value : '';
+}
+
+function discordAnnouncementsConfigured(env) {
+  return Boolean(cleanText(env.DISCORD_BOT_TOKEN, 4000) && discordAnnouncementsChannelId(env));
+}
+
+function discordAnnouncementLimit(env) {
+  const number = Number(env.DISCORD_ANNOUNCEMENTS_LIMIT || 50);
+  return Number.isFinite(number) ? Math.max(1, Math.min(100, Math.round(number))) : 50;
+}
+
+function discordAnnouncementUrl(env, channelId, messageId) {
+  const guildId = cleanText(env.DISCORD_GUILD_ID, 30);
+  if (!guildId || !channelId || !messageId) return '';
+  return `https://discord.com/channels/${guildId}/${channelId}/${messageId}`;
+}
+
+function discordErrorMessage(status, payload = {}) {
+  const detail = cleanText(payload.message || '', 240);
+  if (status === 401) return 'Discord rejected the bot token. Reset DISCORD_BOT_TOKEN in Vercel.';
+  if (status === 403) return 'The Discord bot needs View Channel, Read Message History, Send Messages and Embed Links permissions in the announcements channel.';
+  if (status === 404) return 'Discord could not find the announcements channel or message. Check DISCORD_ANNOUNCEMENTS_CHANNEL_ID and the bot channel permissions.';
+  if (status === 429) return 'Discord rate-limited the announcements connection. Try again shortly.';
+  return detail || `Discord announcements request failed (${status}).`;
+}
+
+async function discordAnnouncementRequest(env, path, options = {}) {
+  const token = cleanText(env.DISCORD_BOT_TOKEN, 4000);
+  if (!token) {
+    const error = new Error('DISCORD_BOT_TOKEN is not configured.');
+    error.code = 'DISCORD_ANNOUNCEMENTS_NOT_CONFIGURED';
+    throw error;
+  }
+  const response = await fetch(`${DISCORD_API_BASE}${path}`, {
+    method: options.method || 'GET',
+    headers: {
+      Authorization: `Bot ${token}`,
+      ...(options.body ? { 'Content-Type': 'application/json' } : {})
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    cache: 'no-store'
+  });
+  if (response.status === 204) return null;
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(discordErrorMessage(response.status, payload));
+    error.code = 'DISCORD_ANNOUNCEMENTS_ERROR';
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+
+function stripDiscordHeading(value) {
+  return cleanText(value, 300)
+    .replace(/^#{1,3}\s+/, '')
+    .replace(/^\*\*(.+)\*\*$/, '$1')
+    .replace(/^__(.+)__$/, '$1')
+    .trim();
+}
+
+function discordMessageToAnnouncement(env, message) {
+  if (!message || !message.id || !message.channel_id) return null;
+  if (![0, 19].includes(Number(message.type || 0))) return null;
+  const embeds = Array.isArray(message.embeds) ? message.embeds : [];
+  const embed = embeds.find((entry) => entry && (entry.title || entry.description)) || {};
+  const content = cleanText(message.content, 5000);
+  const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const title = cleanText(embed.title || stripDiscordHeading(lines[0]) || `Announcement from ${message.author?.global_name || message.author?.username || 'Blackstone RP'}`, 160);
+  let body = cleanText(embed.description || (lines.length > 1 ? lines.slice(1).join('\n') : content), 5000);
+  if (!body && title) body = title;
+  const fields = Array.isArray(embed.fields) ? embed.fields : [];
+  const categoryField = fields.find((field) => /category/i.test(String(field?.name || '')));
+  const category = cleanText(categoryField?.value || 'Discord', 80);
+  const attachment = (Array.isArray(message.attachments) ? message.attachments : []).find((item) => String(item?.content_type || '').startsWith('image/'));
+  const imageUrl = cleanText(embed.image?.url || attachment?.url || '', 2000);
+  if (!title && !body && !imageUrl) return null;
+  const createdAt = cleanText(message.timestamp || nowIso(), 80);
+  const updatedAt = cleanText(message.edited_timestamp || message.timestamp || nowIso(), 80);
+  return {
+    id: `discord_${message.id}`,
+    title: title || 'Blackstone RP announcement',
+    body,
+    category,
+    pinned: Boolean(message.pinned),
+    published: true,
+    source: 'discord',
+    discordMessageId: cleanText(message.id, 30),
+    discordChannelId: cleanText(message.channel_id, 30),
+    discordUrl: discordAnnouncementUrl(env, message.channel_id, message.id),
+    authorName: cleanText(message.author?.global_name || message.author?.username || 'Blackstone RP', 120),
+    imageUrl,
+    createdAt,
+    updatedAt
+  };
+}
+
+async function getDiscordAnnouncements(env, options = {}) {
+  const channelId = discordAnnouncementsChannelId(env);
+  if (!discordAnnouncementsConfigured(env)) {
+    const error = new Error('Discord announcements are not configured.');
+    error.code = 'DISCORD_ANNOUNCEMENTS_NOT_CONFIGURED';
+    throw error;
+  }
+  const now = Date.now();
+  const cacheSeconds = Math.max(10, Math.min(300, Number(env.DISCORD_ANNOUNCEMENTS_CACHE_SECONDS || 45)));
+  if (!options.force && discordAnnouncementsCache.channelId === channelId && discordAnnouncementsCache.expiresAt > now) {
+    return discordAnnouncementsCache.items;
+  }
+  const limit = discordAnnouncementLimit(env);
+  const messages = await discordAnnouncementRequest(env, `/channels/${channelId}/messages?limit=${limit}`);
+  const items = (Array.isArray(messages) ? messages : [])
+    .map((message) => discordMessageToAnnouncement(env, message))
+    .filter(Boolean)
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || String(b.createdAt).localeCompare(String(a.createdAt)));
+  discordAnnouncementsCache = { channelId, expiresAt: now + cacheSeconds * 1000, items };
+  return items;
+}
+
+function discordAnnouncementPayload(item) {
+  const category = cleanText(item.category || 'Community', 80);
+  const title = cleanText(item.title || 'Blackstone RP announcement', 256);
+  const body = cleanText(item.body || '', 4096);
+  return {
+    embeds: [{
+      title,
+      description: body || ' ',
+      color: 0xB8BEC7,
+      fields: [{ name: 'Category', value: category || 'Community', inline: true }],
+      timestamp: nowIso(),
+      footer: { text: `Blackstone RP Website • ${cleanText(item.id || 'announcement', 80)}` }
+    }],
+    allowed_mentions: { parse: [] }
+  };
+}
+
+async function syncAnnouncementToDiscord(env, item, existing = null) {
+  const channelId = discordAnnouncementsChannelId(env);
+  if (!discordAnnouncementsConfigured(env)) {
+    return { item, warning: 'Announcement saved on the website, but Discord announcements are not configured.' };
+  }
+  const existingMessageId = cleanText(existing?.discordMessageId || item.discordMessageId, 30);
+  if (!item.published) {
+    if (existingMessageId) {
+      await discordAnnouncementRequest(env, `/channels/${channelId}/messages/${existingMessageId}`, { method: 'DELETE' });
+    }
+    discordAnnouncementsCache.expiresAt = 0;
+    return {
+      item: {
+        ...item,
+        discordMessageId: '',
+        discordChannelId: channelId,
+        discordUrl: '',
+        discordSyncedAt: nowIso()
+      }
+    };
+  }
+
+  const payload = discordAnnouncementPayload(item);
+  let message = null;
+  if (existingMessageId) {
+    try {
+      message = await discordAnnouncementRequest(env, `/channels/${channelId}/messages/${existingMessageId}`, { method: 'PATCH', body: payload });
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
+  }
+  if (!message) {
+    message = await discordAnnouncementRequest(env, `/channels/${channelId}/messages`, { method: 'POST', body: payload });
+  }
+
+  if (bool(env.DISCORD_ANNOUNCEMENTS_CROSSPOST, false)) {
+    try {
+      await discordAnnouncementRequest(env, `/channels/${channelId}/messages/${message.id}/crosspost`, { method: 'POST' });
+    } catch (error) {
+      console.warn('[Blackstone announcements crosspost]', error.message);
+    }
+  }
+
+  discordAnnouncementsCache.expiresAt = 0;
+  return {
+    item: {
+      ...item,
+      source: 'website',
+      discordMessageId: cleanText(message.id, 30),
+      discordChannelId: channelId,
+      discordUrl: discordAnnouncementUrl(env, channelId, message.id),
+      discordSyncedAt: nowIso()
+    }
+  };
+}
+
+async function deleteAnnouncementFromDiscord(env, item) {
+  const channelId = cleanText(item?.discordChannelId || discordAnnouncementsChannelId(env), 30);
+  const messageId = cleanText(item?.discordMessageId, 30);
+  if (!discordAnnouncementsConfigured(env) || !channelId || !messageId) return;
+  await discordAnnouncementRequest(env, `/channels/${channelId}/messages/${messageId}`, { method: 'DELETE' });
+  discordAnnouncementsCache.expiresAt = 0;
+}
+
+function mergeWebsiteAndDiscordAnnouncements(localAnnouncements, discordAnnouncements, discordLoaded) {
+  const local = Array.isArray(localAnnouncements) ? localAnnouncements : [];
+  if (!discordLoaded) {
+    return local.filter((item) => item.published)
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+  const localByDiscordId = new Map(local.filter((item) => item.discordMessageId).map((item) => [String(item.discordMessageId), item]));
+  const merged = [];
+  for (const discordItem of Array.isArray(discordAnnouncements) ? discordAnnouncements : []) {
+    const websiteItem = localByDiscordId.get(String(discordItem.discordMessageId));
+    if (websiteItem && !websiteItem.published) continue;
+    merged.push(websiteItem ? { ...websiteItem, ...discordItem, id: websiteItem.id, pinned: Boolean(websiteItem.pinned || discordItem.pinned), source: 'discord' } : discordItem);
+  }
+  for (const item of local) {
+    if (!item.published || item.discordMessageId) continue;
+    merged.push(item);
+  }
+  const seen = new Set();
+  return merged.filter((item) => {
+    const key = item.discordMessageId ? `discord:${item.discordMessageId}` : `local:${item.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => Number(b.pinned) - Number(a.pinned) || String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
 function getRedisConfig(env) {
   return {
     url: String(env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, ''),
@@ -530,7 +765,12 @@ function sanitizeEntityItem(entity, input, existing = null) {
       body: cleanText(input.body, 5000),
       category: cleanText(input.category || 'Community', 80),
       pinned: bool(input.pinned),
-      published: bool(input.published, true)
+      published: bool(input.published, true),
+      source: cleanText(input.source || base.source || 'website', 40),
+      discordMessageId: cleanText(input.discordMessageId || base.discordMessageId, 30),
+      discordChannelId: cleanText(input.discordChannelId || base.discordChannelId, 30),
+      discordUrl: cleanText(input.discordUrl || base.discordUrl, 1000),
+      discordSyncedAt: cleanText(input.discordSyncedAt || base.discordSyncedAt, 80)
     };
   }
   if (entity === 'departments') {
@@ -707,10 +947,20 @@ async function getPublicPayload(env) {
   }
   await ensureSeeded(env);
   const data = await getAllData(env);
+  let discordAnnouncements = [];
+  let discordLoaded = false;
+  if (discordAnnouncementsConfigured(env)) {
+    try {
+      discordAnnouncements = await getDiscordAnnouncements(env);
+      discordLoaded = true;
+    } catch (error) {
+      console.warn('[Blackstone announcements read]', error.message);
+    }
+  }
   return {
     configured: true,
     demo: false,
-    announcements: data.announcements.filter((item) => item.published).sort((a, b) => Number(b.pinned) - Number(a.pinned) || String(b.createdAt).localeCompare(String(a.createdAt))),
+    announcements: mergeWebsiteAndDiscordAnnouncements(data.announcements, discordAnnouncements, discordLoaded),
     departments: data.departments.filter((item) => item.published).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)),
     events: data.events.filter((item) => item.published).sort((a, b) => String(a.startsAt || '9999').localeCompare(String(b.startsAt || '9999'))),
     images: data.images.filter((item) => item.published).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)),
@@ -1275,12 +1525,22 @@ async function handlePortal(req, res, env = process.env) {
       } else {
         item = sanitizeEntityItem(entity, input, existing);
       }
+      let syncWarning = '';
+      if (entity === 'announcements') {
+        try {
+          const synced = await syncAnnouncementToDiscord(env, item, existing);
+          item = synced.item;
+          syncWarning = cleanText(synced.warning, 500);
+        } catch (error) {
+          syncWarning = `Announcement saved on the website, but Discord sync failed: ${cleanText(error.message, 300)}`;
+        }
+      }
       if (index >= 0) list[index] = item;
       else list.unshift(item);
       await setJson(env, entity, list);
-      await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: existing ? `${entity}.updated` : `${entity}.created`, entity, targetId: item.id });
+      await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: existing ? `${entity}.updated` : `${entity}.created`, entity, targetId: item.id, details: syncWarning ? { syncWarning } : undefined });
       const responseItem = entity === 'users' ? { ...item, passwordHash: undefined } : item;
-      return json(res, existing ? 200 : 201, { ok: true, item: responseItem });
+      return json(res, existing ? 200 : 201, { ok: true, item: responseItem, warning: syncWarning || undefined });
     }
 
     if (action === 'admin-delete' && req.method === 'DELETE') {
@@ -1294,10 +1554,18 @@ async function handlePortal(req, res, env = process.env) {
       const target = list.find((item) => item.id === id);
       if (!target) return json(res, 404, { ok: false, message: 'Record not found.' });
       if (entity === 'roles' && target.system) return json(res, 400, { ok: false, message: 'System roles cannot be deleted.' });
+      let syncWarning = '';
+      if (entity === 'announcements') {
+        try {
+          await deleteAnnouncementFromDiscord(env, target);
+        } catch (error) {
+          syncWarning = `Website record deleted, but the Discord message could not be removed: ${cleanText(error.message, 300)}`;
+        }
+      }
       const filtered = list.filter((item) => item.id !== id);
       await setJson(env, entity, filtered);
-      await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: `${entity}.deleted`, entity, targetId: id });
-      return json(res, 200, { ok: true });
+      await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: `${entity}.deleted`, entity, targetId: id, details: syncWarning ? { syncWarning } : undefined });
+      return json(res, 200, { ok: true, warning: syncWarning || undefined });
     }
 
     if (action === 'discord-sync' && req.method === 'POST') {
@@ -1331,4 +1599,4 @@ async function handlePortal(req, res, env = process.env) {
   }
 }
 
-module.exports = { handlePortal, ALL_PERMISSIONS };
+module.exports = { handlePortal, ALL_PERMISSIONS, getDiscordAnnouncements, discordAnnouncementsConfigured };

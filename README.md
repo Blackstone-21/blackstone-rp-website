@@ -96,3 +96,25 @@ The Gallery tab loads recent image attachments from Discord channel `15204147357
 - `gallery.html` — dedicated Discord-powered gallery.
 
 Discord role sync supports manual locks so staff roles and departments are not overwritten.
+
+
+## Two-way Discord announcements
+
+The website and Discord announcements channel are linked through the existing bot:
+
+- Discord channel: `1520408782520193115`
+- Messages posted or edited directly in Discord appear in the website announcement feed.
+- Published announcements created or edited in the website Admin Panel are created or updated in Discord.
+- Unpublishing or deleting a website-managed announcement removes its linked Discord message.
+- The public diagnostic endpoint is `/api/discord-announcements`.
+
+Required Vercel setting:
+
+- `DISCORD_ANNOUNCEMENTS_CHANNEL_ID=1520408782520193115`
+
+Optional settings:
+
+- `DISCORD_ANNOUNCEMENTS_LIMIT=50`
+- `DISCORD_ANNOUNCEMENTS_CROSSPOST=true` to automatically publish bot messages from a Discord Announcement channel.
+
+The bot needs View Channel, Read Message History, Send Messages and Embed Links in the announcements channel. Keep Message Content Intent enabled. Never put the bot token in GitHub.
