@@ -148,6 +148,144 @@
     });
   });
 
+
+
+  // Public shop. Products are created and maintained in the admin panel.
+  const shopGrid = $('#shopGrid');
+  const shopStatus = $('#shopStatus');
+  let shopLoaded = false;
+
+  function safeHttpsUrl(value) {
+    try {
+      const url = new URL(String(value || ''));
+      return url.protocol === 'https:' ? url.href : '';
+    } catch {
+      return '';
+    }
+  }
+
+  function createShopCard(item) {
+    const card = document.createElement('article');
+    card.className = `shop-card${item.featured ? ' featured' : ''}`;
+
+    const imageWrap = document.createElement('div');
+    imageWrap.className = 'shop-image';
+    const image = document.createElement('img');
+    const imageUrl = safeHttpsUrl(item.imageUrl);
+    image.src = imageUrl || 'assets/blackstone-logo.webp';
+    image.alt = item.title ? `${item.title} shop item` : 'Blackstone RP shop item';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    if (!imageUrl) imageWrap.classList.add('logo-fallback');
+    image.addEventListener('error', () => {
+      if (image.dataset.fallbackApplied === 'true') return;
+      image.dataset.fallbackApplied = 'true';
+      image.src = 'assets/blackstone-logo.webp';
+      imageWrap.classList.add('logo-fallback');
+    });
+
+    const stock = document.createElement('span');
+    stock.className = `shop-stock${item.soldOut ? ' sold-out' : ''}`;
+    stock.textContent = item.soldOut ? 'SOLD OUT' : 'AVAILABLE';
+    imageWrap.append(image, stock);
+
+    const copy = document.createElement('div');
+    copy.className = 'shop-card-copy';
+    const category = document.createElement('span');
+    category.textContent = item.category || 'BLACKSTONE SHOP';
+    const title = document.createElement('h3');
+    title.textContent = item.title || 'Shop Item';
+    const description = document.createElement('p');
+    description.textContent = item.description || 'More information will be available soon.';
+
+    const footer = document.createElement('div');
+    footer.className = 'shop-card-footer';
+    const price = document.createElement('strong');
+    price.className = 'shop-price';
+    price.textContent = item.priceLabel || 'View Details';
+
+    const purchaseUrl = safeHttpsUrl(item.purchaseUrl);
+    let action;
+    if (purchaseUrl && !item.soldOut) {
+      action = document.createElement('a');
+      action.href = purchaseUrl;
+      action.target = '_blank';
+      action.rel = 'noopener noreferrer';
+      action.className = 'shop-action';
+      action.textContent = item.buttonLabel || 'View Item';
+    } else {
+      action = document.createElement('span');
+      action.className = 'shop-action disabled';
+      action.textContent = item.soldOut ? 'Sold Out' : 'Coming Soon';
+    }
+
+    footer.append(price, action);
+    copy.append(category, title, description, footer);
+    card.append(imageWrap, copy);
+    return card;
+  }
+
+  function renderShop(items, configured = true) {
+    if (!shopGrid) return;
+    const list = Array.isArray(items) ? items : [];
+    shopGrid.replaceChildren();
+    shopGrid.setAttribute('aria-busy', 'false');
+
+    if (!list.length) {
+      const empty = document.createElement('article');
+      empty.className = 'shop-empty glass-card';
+      const label = document.createElement('span');
+      label.textContent = configured ? 'BLACKSTONE STORE' : 'SHOP SETUP';
+      const title = document.createElement('h3');
+      title.textContent = configured ? 'NEW ITEMS COMING SOON.' : 'SHOP CONNECTION NOT CONFIGURED.';
+      const message = document.createElement('p');
+      message.textContent = configured
+        ? 'There are no published shop items right now. Check back soon or join Discord for store updates.'
+        : 'Connect the website database, then add products from Shop inside the administration panel.';
+      empty.append(label, title, message);
+      shopGrid.append(empty);
+      if (shopStatus) shopStatus.textContent = configured ? 'NO PUBLISHED ITEMS · CHECK BACK SOON' : 'ADMIN SETUP REQUIRED';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    list.forEach((item) => fragment.append(createShopCard(item)));
+    shopGrid.append(fragment);
+    if (shopStatus) shopStatus.textContent = `${list.length} ITEM${list.length === 1 ? '' : 'S'} CURRENTLY LISTED`;
+  }
+
+  async function loadShop() {
+    if (!shopGrid || shopLoaded) return;
+    shopLoaded = true;
+    try {
+      const response = await fetch('api/portal?action=public', {
+        headers: { Accept: 'application/json' },
+        cache: 'default',
+        credentials: 'same-origin'
+      });
+      if (!response.ok) throw new Error(`Shop request failed (${response.status}).`);
+      const payload = await response.json();
+      renderShop(payload.shop, payload.configured !== false);
+    } catch (error) {
+      console.warn('Blackstone RP shop update failed:', error);
+      shopLoaded = false;
+      renderShop([], true);
+      if (shopStatus) shopStatus.textContent = 'SHOP TEMPORARILY UNAVAILABLE';
+    }
+  }
+
+  const shopSection = shopGrid?.closest('section');
+  if (shopSection && 'IntersectionObserver' in window) {
+    const shopObserver = new IntersectionObserver((entries, observer) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      observer.disconnect();
+      loadShop();
+    }, { rootMargin: '500px 0px' });
+    shopObserver.observe(shopSection);
+  } else {
+    loadShop();
+  }
+
   const year = $('#year');
   if (year) year.textContent = String(new Date().getFullYear());
 

@@ -16,6 +16,7 @@ const ALL_PERMISSIONS = [
   'departments.manage',
   'events.manage',
   'applications.manage',
+  'shop.manage',
   'images.manage',
   'audit.view',
   'discord.sync',
@@ -30,11 +31,12 @@ const ENTITY_PERMISSIONS = {
   departments: 'departments.manage',
   events: 'events.manage',
   applications: 'applications.manage',
+  shop: 'shop.manage',
   images: 'images.manage',
   settings: 'settings.manage'
 };
 
-const PUBLIC_ENTITIES = new Set(['announcements', 'departments', 'events', 'images']);
+const PUBLIC_ENTITIES = new Set(['announcements', 'departments', 'events', 'shop', 'images']);
 const ADMIN_ENTITIES = new Set(Object.keys(ENTITY_PERMISSIONS));
 
 function nowIso() {
@@ -432,6 +434,7 @@ function defaultData() {
     events: [
       { id: 'event_community', title: 'Community Night', description: 'Street meet, cruise and community roleplay night. Final time will be confirmed in Discord.', startsAt: '', location: 'Los Santos', published: true, createdAt, updatedAt: createdAt }
     ],
+    shop: [],
     images: [],
     applications: [],
     audit: [],
@@ -663,6 +666,33 @@ async function runFireDepartmentMigration(env) {
   return !hasFireDepartment;
 }
 
+
+async function runShopMigration(env) {
+  const migrationKey = `${PREFIX}migration:v5-shop`;
+  const completed = await redisCommand(env, ['GET', migrationKey]);
+  if (completed === '1') return false;
+
+  const defaults = defaultData();
+  const [roles, shop] = await Promise.all([
+    getJson(env, 'roles', defaults.roles),
+    getJson(env, 'shop', defaults.shop)
+  ]);
+
+  for (const role of roles) {
+    if (!Array.isArray(role.permissions)) role.permissions = [];
+    if (['founder', 'admin'].includes(role.id) && !role.permissions.includes('shop.manage')) {
+      role.permissions.push('shop.manage');
+    }
+  }
+
+  await redisPipeline(env, [
+    ['SET', `${PREFIX}roles`, JSON.stringify(roles)],
+    ['SET', `${PREFIX}shop`, JSON.stringify(Array.isArray(shop) ? shop : [])],
+    ['SET', migrationKey, '1']
+  ]);
+  return true;
+}
+
 async function ensureSeeded(env) {
   if (!isRedisConfigured(env)) return { configured: false, seeded: false };
   const seeded = await redisCommand(env, ['GET', `${PREFIX}seeded`]);
@@ -670,6 +700,7 @@ async function ensureSeeded(env) {
     await ensureBootstrapAdmin(env);
     await runDataMigrations(env);
     await runFireDepartmentMigration(env);
+    await runShopMigration(env);
     return { configured: true, seeded: true };
   }
 
@@ -681,6 +712,7 @@ async function ensureSeeded(env) {
     ['SET', `${PREFIX}announcements`, JSON.stringify(defaults.announcements)],
     ['SET', `${PREFIX}departments`, JSON.stringify(defaults.departments)],
     ['SET', `${PREFIX}events`, JSON.stringify(defaults.events)],
+    ['SET', `${PREFIX}shop`, JSON.stringify(defaults.shop)],
     ['SET', `${PREFIX}images`, JSON.stringify(defaults.images)],
     ['SET', `${PREFIX}applications`, JSON.stringify(defaults.applications)],
     ['SET', `${PREFIX}audit`, JSON.stringify(defaults.audit)],
@@ -691,12 +723,13 @@ async function ensureSeeded(env) {
   await ensureBootstrapAdmin(env);
   await runDataMigrations(env);
   await runFireDepartmentMigration(env);
+  await runShopMigration(env);
   return { configured: true, seeded: true };
 }
 
 async function getAllData(env) {
   const defaults = defaultData();
-  const names = ['roles', 'users', 'members', 'announcements', 'departments', 'events', 'images', 'applications', 'audit', 'settings'];
+  const names = ['roles', 'users', 'members', 'announcements', 'departments', 'events', 'shop', 'images', 'applications', 'audit', 'settings'];
   const results = await redisPipeline(env, names.map((name) => ['GET', `${PREFIX}${name}`]));
   const output = {};
   names.forEach((name, index) => {
@@ -834,6 +867,27 @@ function sanitizeEntityItem(entity, input, existing = null) {
       startsAt: cleanText(input.startsAt, 80),
       location: cleanText(input.location, 180),
       published: bool(input.published, true)
+    };
+  }
+
+  if (entity === 'shop') {
+    const imageUrl = cleanText(input.imageUrl, 2000);
+    const purchaseUrl = cleanText(input.purchaseUrl, 2000);
+    if (imageUrl && !/^https:\/\//i.test(imageUrl)) throw new Error('Shop image URLs must use HTTPS.');
+    if (purchaseUrl && !/^https:\/\//i.test(purchaseUrl)) throw new Error('Shop purchase URLs must use HTTPS.');
+    return {
+      ...base,
+      title: cleanText(input.title, 180),
+      category: cleanText(input.category || 'Blackstone Shop', 100),
+      description: cleanText(input.description, 4000),
+      priceLabel: cleanText(input.priceLabel, 100),
+      imageUrl,
+      purchaseUrl,
+      buttonLabel: cleanText(input.buttonLabel || 'View Item', 60),
+      featured: bool(input.featured),
+      soldOut: bool(input.soldOut),
+      published: bool(input.published, true),
+      sortOrder: Number.isFinite(Number(input.sortOrder)) ? Number(input.sortOrder) : 0
     };
   }
   if (entity === 'images') {
@@ -979,6 +1033,7 @@ async function getPublicPayload(env) {
       announcements: defaults.announcements.filter((item) => item.published),
       departments: defaults.departments.filter((item) => item.published),
       events: defaults.events.filter((item) => item.published),
+      shop: defaults.shop.filter((item) => item.published),
       images: defaults.images.filter((item) => item.published),
       staff: defaults.members.filter((item) => item.public && item.status === 'Active'),
       settings: defaults.settings
@@ -1002,6 +1057,7 @@ async function getPublicPayload(env) {
     announcements: mergeWebsiteAndDiscordAnnouncements(data.announcements, discordAnnouncements, discordLoaded),
     departments: data.departments.filter((item) => item.published).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)),
     events: data.events.filter((item) => item.published).sort((a, b) => String(a.startsAt || '9999').localeCompare(String(b.startsAt || '9999'))),
+    shop: data.shop.filter((item) => item.published).sort((a, b) => Number(b.featured || 0) - Number(a.featured || 0) || Number(a.sortOrder || 0) - Number(b.sortOrder || 0)),
     images: data.images.filter((item) => item.published).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)),
     staff: data.members.filter((item) => item.public && item.status === 'Active'),
     settings: data.settings
@@ -1525,6 +1581,7 @@ async function handlePortal(req, res, env = process.env) {
           announcements: data.announcements.filter((item) => item.published).length,
           departments: data.departments.length,
           events: data.events.filter((item) => item.published).length,
+          shop: data.shop.filter((item) => item.published).length,
           images: data.images.filter((item) => item.published).length
         },
         recentApplications: data.applications.slice(0, 5),

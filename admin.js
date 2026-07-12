@@ -1,7 +1,7 @@
 (() => {
   const API = 'api/portal';
   const ALL_PERMISSIONS = [
-    'dashboard.view','announcements.manage','members.manage','users.manage','roles.manage','departments.manage','events.manage','applications.manage','images.manage','audit.view','discord.sync','settings.manage'
+    'dashboard.view','announcements.manage','members.manage','users.manage','roles.manage','departments.manage','events.manage','applications.manage','shop.manage','images.manage','audit.view','discord.sync','settings.manage'
   ];
   let csrfToken = sessionStorage.getItem('bsrp_csrf') || '';
   let currentUser = null;
@@ -97,6 +97,23 @@
         {name:'staffNotes',label:'Staff notes',type:'textarea',full:true}
       ]
     },
+
+    shop: {
+      title: 'Shop', eyebrow: 'PUBLIC STORE', permission: 'shop.manage',
+      columns: [['title','Item'],['category','Category'],['priceLabel','Price'],['soldOut','Stock'],['published','Published'],['sortOrder','Order']],
+      fields: [
+        {name:'title',label:'Item title',required:true}, {name:'category',label:'Category'},
+        {name:'priceLabel',label:'Price / display label',help:'Examples: $25 AUD, Free, Contact Staff'},
+        {name:'buttonLabel',label:'Purchase button label',default:'View Item'},
+        {name:'description',label:'Item description',type:'textarea',full:true},
+        {name:'imageUrl',label:'HTTPS image URL',type:'url',full:true,help:'Optional. Leave blank to use the Blackstone logo.'},
+        {name:'purchaseUrl',label:'HTTPS purchase / information URL',type:'url',full:true,help:'The public button opens this address in a new tab.'},
+        {name:'sortOrder',label:'Sort order',type:'number'},
+        {name:'featured',label:'Featured item',type:'checkbox'},
+        {name:'soldOut',label:'Sold out',type:'checkbox'},
+        {name:'published',label:'Published on website',type:'checkbox',default:true}
+      ]
+    },
     images: {
       title: 'Featured Images', eyebrow: 'WEBSITE MEDIA', permission: 'images.manage',
       columns: [['title','Title'],['url','Image URL'],['published','Published'],['sortOrder','Order']],
@@ -141,6 +158,7 @@
   function hasPermission(permission){return Boolean(currentUser?.permissions?.includes(permission))}
   function toast(message){const el=$('#adminToast');el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600)}
   function formatValue(key,value){
+    if(key==='soldOut')return value?'Sold Out':'Available';
     if(value===true)return 'Yes'; if(value===false)return 'No';
     if(Array.isArray(value))return value.join(', ');
     if(!value)return '—';
@@ -190,7 +208,7 @@
   }
 
   async function loadDashboard(){
-    try{const data=await api('admin-dashboard');const metrics=[['MEMBERS',data.counts.members,'Registered profiles'],['ACCOUNTS',data.counts.accounts,'Login accounts'],['PENDING',data.counts.pendingApplications,'Applications waiting'],['ANNOUNCEMENTS',data.counts.announcements,'Currently published'],['DEPARTMENTS',data.counts.departments,'Configured departments'],['EVENTS',data.counts.events,'Published events'],['IMAGES',data.counts.images,'Featured images']];
+    try{const data=await api('admin-dashboard');const metrics=[['MEMBERS',data.counts.members,'Registered profiles'],['ACCOUNTS',data.counts.accounts,'Login accounts'],['PENDING',data.counts.pendingApplications,'Applications waiting'],['ANNOUNCEMENTS',data.counts.announcements,'Currently published'],['DEPARTMENTS',data.counts.departments,'Configured departments'],['EVENTS',data.counts.events,'Published events'],['SHOP',data.counts.shop,'Published shop items'],['IMAGES',data.counts.images,'Featured images']];
       $('#metricGrid').innerHTML=metrics.map(([label,count,note])=>`<article class="metric"><span>${label}</span><strong>${count}</strong><small>${note}</small></article>`).join('');
       renderDashboardList('#dashboardApplications',data.recentApplications,item=>({title:item.discord||'Unknown applicant',note:`${item.applicationType||'Application'} · ${item.fivem||'No CFX name'}`,status:item.status||'Pending'}));
       renderDashboardList('#dashboardAudit',data.recentAudit,item=>({title:item.actorName||'System',note:item.action||'Activity',status:formatValue('at',item.at)}));
@@ -218,7 +236,7 @@
 
   function renderTable(){
     const config=sections[currentSection];const head=$('#dataHead');const body=$('#dataBody');head.innerHTML='';body.innerHTML='';const row=document.createElement('tr');config.columns.forEach(([,label])=>{const th=document.createElement('th');th.textContent=label;row.append(th)});const actionTh=document.createElement('th');actionTh.textContent='Actions';row.append(actionTh);head.append(row);
-    filteredItems.forEach(item=>{const tr=document.createElement('tr');config.columns.forEach(([key])=>{const td=document.createElement('td');const value=formatValue(key,item[key]);if(key===config.columns[0][0]){const strong=document.createElement('strong');strong.textContent=value;td.append(strong)}else if(['status','published','active','open','pinned','roleMode','departmentMode'].includes(key)){const badge=document.createElement('span');badge.className='status-badge';badge.textContent=value;td.append(badge)}else{td.textContent=value}tr.append(td)});const actions=document.createElement('td');actions.className='table-actions';if(!config.editDisabled){const edit=document.createElement('button');edit.textContent=currentSection==='applications'?'Review':'Edit';edit.addEventListener('click',()=>openEditor(item));actions.append(edit)}if(!config.deleteDisabled){const del=document.createElement('button');del.className='delete';del.textContent='Delete';del.addEventListener('click',()=>deleteRecord(item));actions.append(del)}tr.append(actions);body.append(tr)});
+    filteredItems.forEach(item=>{const tr=document.createElement('tr');config.columns.forEach(([key])=>{const td=document.createElement('td');const value=formatValue(key,item[key]);if(key===config.columns[0][0]){const strong=document.createElement('strong');strong.textContent=value;td.append(strong)}else if(['status','published','active','open','pinned','soldOut','featured','roleMode','departmentMode'].includes(key)){const badge=document.createElement('span');badge.className='status-badge';badge.textContent=value;td.append(badge)}else{td.textContent=value}tr.append(td)});const actions=document.createElement('td');actions.className='table-actions';if(!config.editDisabled){const edit=document.createElement('button');edit.textContent=currentSection==='applications'?'Review':'Edit';edit.addEventListener('click',()=>openEditor(item));actions.append(edit)}if(!config.deleteDisabled){const del=document.createElement('button');del.className='delete';del.textContent='Delete';del.addEventListener('click',()=>deleteRecord(item));actions.append(del)}tr.append(actions);body.append(tr)});
     $('#dataEmpty').hidden=filteredItems.length>0;$('.table-wrap').hidden=filteredItems.length===0;
   }
 

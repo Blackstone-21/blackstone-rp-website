@@ -144,3 +144,13 @@ The administration login is now centred across desktop and mobile layouts. Prote
 - Added Fire to the homepage department selector and Community Hub department data.
 - Added a safe one-time database migration so existing Vercel deployments receive the Fire Department without deleting current departments or applications.
 - Fire is available automatically in Admin member and role department lists.
+
+
+## v4.6 Shop Management
+
+- Replaces the top navigation Features link with Shop.
+- Adds a public, responsive shop section to the homepage.
+- Adds Shop management to the administration panel.
+- Staff with `shop.manage` can create, edit, publish, feature, mark sold out and delete shop items.
+- Shop data is stored in the existing shared Redis database and appears automatically on the website.
+- Product and image links must use HTTPS.

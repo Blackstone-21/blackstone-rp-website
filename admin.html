@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="admin.css?v=4.4" />
+  <link rel="stylesheet" href="admin.css?v=4.6" />
 </head>
 <body>
   <div class="admin-ambient"></div>
@@ -20,7 +20,7 @@
       <a href="index.html" class="login-brand"><img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="Blackstone RP logo" /><span><strong>BLACKSTONE</strong><small>ADMINISTRATION</small></span></a>
       <span class="secure-label">SECURE STAFF ACCESS</span>
       <h1>COMMAND<br /><em>CENTRE.</em></h1>
-      <p>Manage members, accounts, roles, departments, announcements, events, applications and website content through the shared Blackstone RP backend.</p>
+      <p>Manage members, accounts, roles, departments, announcements, events, applications, shop items and website content through the shared Blackstone RP backend.</p>
       <a class="discord-admin-login" href="api/portal?action=discord-login&amp;returnTo=admin">Continue with Discord</a>
       <div class="admin-login-divider"><span>OR USE STAFF EMAIL</span></div>
       <form id="adminLoginForm">
@@ -48,10 +48,11 @@
         <button type="button" data-section="departments" data-permission="departments.manage"><span>06</span>Departments</button>
         <button type="button" data-section="events" data-permission="events.manage"><span>07</span>Events</button>
         <button type="button" data-section="applications" data-permission="applications.manage"><span>08</span>Applications</button>
-        <button type="button" data-section="images" data-permission="images.manage"><span>09</span>Featured Images</button>
-        <button type="button" data-section="discord" data-permission="discord.sync"><span>10</span>Discord Sync</button>
-        <button type="button" data-section="audit" data-permission="audit.view"><span>11</span>Audit History</button>
-        <button type="button" data-section="settings" data-permission="settings.manage"><span>12</span>Settings</button>
+        <button type="button" data-section="shop" data-permission="shop.manage"><span>09</span>Shop</button>
+        <button type="button" data-section="images" data-permission="images.manage"><span>10</span>Featured Images</button>
+        <button type="button" data-section="discord" data-permission="discord.sync"><span>11</span>Discord Sync</button>
+        <button type="button" data-section="audit" data-permission="audit.view"><span>12</span>Audit History</button>
+        <button type="button" data-section="settings" data-permission="settings.manage"><span>13</span>Settings</button>
       </nav>
       <div class="sidebar-footer"><a href="portal.html">Open Community Hub ↗</a><button type="button" id="adminLogout">Sign Out</button></div>
     </aside>
@@ -115,6 +116,6 @@
   </div>
 
   <div class="toast" id="adminToast"></div>
-  <script src="admin.js?v=4"></script>
+  <script src="admin.js?v=5"></script>
 </body>
 </html>
