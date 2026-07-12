@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050505" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="description" content="Secure Blackstone RP member and staff login." />
+  <title>Login | Blackstone RP</title>
+  <link rel="icon" type="image/png" href="assets/blackstone-logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="login.css?v=1" />
+</head>
+<body>
+  <div class="login-background"></div>
+  <header class="login-header">
+    <a href="index.html" class="login-brand">
+      <img src="assets/blackstone-logo.png" alt="Blackstone RP logo" />
+      <span><strong>BLACKSTONE</strong><small>SECURE ACCESS</small></span>
+    </a>
+    <nav><a href="index.html">Website</a><a href="gallery.html">Gallery</a><a href="portal.html">Community Hub</a></nav>
+  </header>
+
+  <main class="login-shell">
+    <section class="login-copy">
+      <span class="eyebrow"><i></i> BLACKSTONE NETWORK</span>
+      <h1>ONE LOGIN.<br /><em>FULL ACCESS.</em></h1>
+      <p>Members can sign in with Discord. Authorised staff can use their secure Blackstone account to open the v12-style administration command centre.</p>
+      <div class="login-features">
+        <div><span>01</span><strong>MEMBER HUB</strong><small>Profile, character, departments and community updates</small></div>
+        <div><span>02</span><strong>ROLE-BASED ACCESS</strong><small>Only approved permissions unlock administration tools</small></div>
+        <div><span>03</span><strong>DISCORD LINKING</strong><small>Discord members and mapped roles sync into the member registry</small></div>
+      </div>
+    </section>
+
+    <section class="access-card" aria-labelledby="accessTitle">
+      <div class="access-head">
+        <img src="assets/blackstone-logo.png" alt="" />
+        <div><span>AUTHORISED ACCESS</span><h2 id="accessTitle">SIGN IN.</h2></div>
+      </div>
+
+      <a class="discord-button" id="discordLogin" href="api/portal?action=discord-login" hidden>
+        <span class="discord-icon">D</span>
+        <span><strong>Continue with Discord</strong><small>For members and Discord-linked staff</small></span>
+      </a>
+
+      <div class="divider" id="loginDivider" hidden><span>OR USE STAFF EMAIL</span></div>
+
+      <form id="secureLoginForm">
+        <label><span>Email address</span><input type="email" name="email" autocomplete="username" required /></label>
+        <label><span>Password</span><input type="password" name="password" autocomplete="current-password" required /></label>
+        <label class="remember-field"><input type="checkbox" name="remember" checked /><span>Keep me signed in on this device</span></label>
+        <p class="login-message" id="loginMessage"></p>
+        <button type="submit" id="loginSubmit">Sign In</button>
+      </form>
+
+      <div class="setup-status" id="setupStatus"><i></i><span>Checking secure backend…</span></div>
+      <p class="access-note">Staff accounts are created and assigned permissions inside the Blackstone RP administration panel.</p>
+    </section>
+  </main>
+
+  <footer><span>© <b id="loginYear"></b> Blackstone RP</span><a href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer">Need help? Open Discord ↗</a></footer>
+  <script src="login.js?v=1"></script>
+</body>
+</html>

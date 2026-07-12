@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050505" />
+  <meta name="description" content="Apply to join Blackstone RP." />
+  <title>Applications | Blackstone RP</title>
+  <link rel="icon" type="image/png" href="assets/blackstone-logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="apply.css?v=1" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <header class="apply-header">
+    <a href="index.html" class="brand"><img src="assets/blackstone-logo.png" alt="Blackstone RP logo" /><span><strong>BLACKSTONE</strong><small>APPLICATION PORTAL</small></span></a>
+    <div><span class="application-status" id="applicationsStatus">CHECKING APPLICATIONS</span><a href="portal.html">Community Hub</a><a href="index.html">Return to Website</a></div>
+  </header>
+
+  <main class="apply-shell">
+    <aside class="application-sidebar">
+      <span class="eyebrow">BLACKSTONE NETWORK</span>
+      <h1>BUILD YOUR<br /><em>LEGACY.</em></h1>
+      <p>Complete your application carefully. Your answers help our staff understand the kind of roleplay and community contribution you want to create.</p>
+      <ol id="stepList">
+        <li class="active" data-step="1"><b>01</b><span><strong>Application Type</strong><small>Choose your pathway</small></span></li>
+        <li data-step="2"><b>02</b><span><strong>About You</strong><small>Discord and FiveM details</small></span></li>
+        <li data-step="3"><b>03</b><span><strong>Roleplay Profile</strong><small>Experience and character</small></span></li>
+        <li data-step="4"><b>04</b><span><strong>Scenarios</strong><small>Show your judgement</small></span></li>
+        <li data-step="5"><b>05</b><span><strong>Review</strong><small>Confirm and submit</small></span></li>
+      </ol>
+      <div class="before-card"><strong>Before you apply</strong><ul><li>Read the complete server rules</li><li>Give honest and detailed answers</li><li>Use your own words</li><li>Make sure your Discord ID is correct</li></ul></div>
+    </aside>
+
+    <section class="application-panel">
+      <header class="panel-header"><div><span id="sectionCode">SECTION 01 / 05</span><h2 id="sectionTitle">Choose your application</h2></div><div class="progress"><span id="progressBar"></span></div></header>
+      <div class="setup-warning" id="applySetupWarning" hidden><strong>APPLICATION DATABASE NOT CONNECTED</strong><p>The form is visible, but submissions require the Vercel database setup described in the included setup guide.</p></div>
+      <form id="applicationForm" novalidate>
+        <section class="form-step active" data-step="1">
+          <p class="step-intro">Select the pathway that best matches how you want to join Blackstone RP.</p>
+          <div class="role-grid">
+            <label><input type="radio" name="applicationType" value="Civilian Whitelist" required /><span class="role-icon">◈</span><strong>Civilian Whitelist</strong><small>Start a civilian, business or criminal storyline.</small><em>GENERAL APPLICATION</em></label>
+            <label><input type="radio" name="applicationType" value="Police Department" /><span class="role-icon">⬡</span><strong>Police Department</strong><small>Protect the city, investigate crime and serve the community.</small><em>DEPARTMENT APPLICATION</em></label>
+            <label><input type="radio" name="applicationType" value="Emergency Medical Services" /><span class="role-icon">✚</span><strong>Emergency Medical</strong><small>Respond to emergencies and create meaningful medical roleplay.</small><em>DEPARTMENT APPLICATION</em></label>
+            <label><input type="radio" name="applicationType" value="Staff Team" /><span class="role-icon">⌁</span><strong>Staff Team</strong><small>Support players, moderate fairly and help improve the community.</small><em>STAFF APPLICATION</em></label>
+          </div>
+        </section>
+
+        <section class="form-step" data-step="2">
+          <div class="field-grid">
+            <label><span>Discord username *</span><input type="text" name="discord" maxlength="160" placeholder="example_user" required /></label>
+            <label><span>Discord user ID *</span><input type="text" name="discordId" maxlength="20" pattern="[0-9]{15,20}" placeholder="123456789012345678" required /></label>
+            <label><span>Age *</span><input type="number" name="age" min="16" max="99" required /></label>
+            <label><span>Time zone *</span><select name="timezone" required><option value="">Select time zone</option><option>AWST — Western Australia</option><option>ACST — Central Australia</option><option>AEST — Eastern Australia</option><option>NZST — New Zealand</option><option>Other</option></select></label>
+            <label><span>Steam profile URL</span><input type="url" name="steam" maxlength="500" placeholder="https://steamcommunity.com/id/..." /></label>
+            <label><span>FiveM / CFX username *</span><input type="text" name="fivem" maxlength="160" required /></label>
+          </div>
+          <label class="full-field"><span>How did you hear about Blackstone RP?</span><select name="source"><option value="">Choose an option</option><option>TikTok</option><option>Discord</option><option>Friend or existing member</option><option>FiveM server list</option><option>YouTube or livestream</option><option>Other</option></select></label>
+        </section>
+
+        <section class="form-step" data-step="3">
+          <div class="field-grid">
+            <label><span>Years of roleplay experience *</span><select name="experience" required><option value="">Select experience</option><option>New to roleplay</option><option>Less than 1 year</option><option>1–2 years</option><option>3–5 years</option><option>More than 5 years</option></select></label>
+            <label><span>Typical weekly availability *</span><select name="availability" required><option value="">Select availability</option><option>1–5 hours</option><option>6–10 hours</option><option>11–20 hours</option><option>20+ hours</option></select></label>
+          </div>
+          <label class="full-field"><span>Tell us about your previous roleplay experience *</span><textarea name="history" minlength="80" maxlength="1200" required></textarea><small class="counter"><b>0</b>/1200</small></label>
+          <label class="full-field"><span>Describe the character or story you want to create *</span><textarea name="character" minlength="100" maxlength="1500" required></textarea><small class="counter"><b>0</b>/1500</small></label>
+          <label class="full-field"><span>What does quality roleplay mean to you? *</span><textarea name="quality" minlength="80" maxlength="1000" required></textarea><small class="counter"><b>0</b>/1000</small></label>
+        </section>
+
+        <section class="form-step" data-step="4">
+          <article class="scenario"><span>SCENARIO 01</span><h3>You are being robbed at gunpoint. What do you do?</h3><p>Explain how you would value your character's life while still creating engaging roleplay.</p><textarea name="scenario1" minlength="80" maxlength="1000" required></textarea><small class="counter"><b>0</b>/1000</small></article>
+          <article class="scenario"><span>SCENARIO 02</span><h3>You recognise another player from information seen on Discord.</h3><p>How would you handle the situation in-game?</p><textarea name="scenario2" minlength="80" maxlength="1000" required></textarea><small class="counter"><b>0</b>/1000</small></article>
+          <article class="scenario"><span>SCENARIO 03</span><h3>A roleplay scene does not go the way you expected.</h3><p>Describe how you would handle the scene and any disagreement with another player.</p><textarea name="scenario3" minlength="80" maxlength="1000" required></textarea><small class="counter"><b>0</b>/1000</small></article>
+        </section>
+
+        <section class="form-step" data-step="5">
+          <div class="review-card">
+            <div><span>APPLICATION TYPE</span><strong id="reviewType">Not selected</strong></div>
+            <div><span>DISCORD</span><strong id="reviewDiscord">Not entered</strong></div>
+            <div><span>CFX USERNAME</span><strong id="reviewFivem">Not entered</strong></div>
+            <div><span>EXPERIENCE</span><strong id="reviewExperience">Not selected</strong></div>
+          </div>
+          <div class="declaration">
+            <h3>Applicant declaration</h3>
+            <label><input type="checkbox" name="rulesConfirmed" required /><span>I have read and agree to follow the Blackstone RP rules and community standards.</span></label>
+            <label><input type="checkbox" name="honestConfirmed" required /><span>I confirm the information in this application is honest and written by me.</span></label>
+            <label><input type="checkbox" name="contactConfirmed" required /><span>I understand staff may contact me through Discord regarding this application.</span></label>
+          </div>
+        </section>
+
+        <p class="form-alert" id="formAlert" role="alert"></p>
+        <footer class="form-navigation"><button type="button" class="button secondary" id="prevButton">← Back</button><button type="button" class="button primary" id="nextButton">Continue →</button><button type="submit" class="button primary" id="submitButton" hidden>Submit Application ↗</button></footer>
+      </form>
+    </section>
+  </main>
+
+  <div class="success-modal" id="successModal" aria-hidden="true"><div><img src="assets/blackstone-logo.png" alt="" /><span>APPLICATION RECEIVED</span><h2>YOUR STORY STARTS HERE.</h2><p>Your application has been securely submitted to the Blackstone RP staff panel.</p><strong id="applicationId"></strong><a href="portal.html" class="button primary">Open Community Hub</a></div></div>
+
+  <script src="apply.js?v=1"></script>
+</body>
+</html>

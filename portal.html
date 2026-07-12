@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050505" />
+  <meta name="description" content="Blackstone RP community and member portal." />
+  <title>Community Hub | Blackstone RP</title>
+  <link rel="icon" type="image/png" href="assets/blackstone-logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="portal.css?v=3" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <header class="portal-header">
+    <a href="index.html" class="portal-brand">
+      <img src="assets/blackstone-logo.png" alt="Blackstone RP logo" />
+      <span><strong>BLACKSTONE</strong><small>COMMUNITY HUB</small></span>
+    </a>
+    <nav>
+      <a href="index.html">Website</a>
+      <a href="rules.html">Rules</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="apply.html">Apply</a>
+      <a href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer">Discord</a>
+      <button type="button" id="accountButton" class="header-button">Sign In</button>
+    </nav>
+  </header>
+
+  <main class="portal-shell">
+    <section class="portal-hero">
+      <div>
+        <span class="eyebrow"><i></i> BLACKSTONE NETWORK</span>
+        <h1>YOUR CITY.<br /><em>ONE HUB.</em></h1>
+        <p>Follow community updates, explore departments, submit applications, manage your member profile and access staff tools from one shared Blackstone RP portal.</p>
+        <div class="hero-actions">
+          <a href="https://cfx.re/join/4xlaj5" class="button primary" target="_blank" rel="noopener noreferrer">Connect to FiveM <span>↗</span></a>
+          <a href="apply.html" class="button secondary">Submit Application <span>→</span></a>
+        </div>
+      </div>
+      <div class="network-card">
+        <div class="network-head"><span class="pulse"></span><strong id="networkLabel">CHECKING SERVER</strong></div>
+        <img src="assets/blackstone-logo.png" alt="" />
+        <div class="network-stats">
+          <div><small>STATUS</small><strong id="portalServerStatus">CHECKING</strong></div>
+          <div><small>PLAYERS</small><strong id="portalPlayers">— / —</strong></div>
+          <div><small>RESPONSE</small><strong id="portalResponse">—</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="setup-banner" id="setupBanner" hidden>
+      <strong>PORTAL DATABASE SETUP REQUIRED</strong>
+      <p>Public information is currently using built-in starter content. Member accounts, applications and admin changes become active after the Vercel database environment variables are added.</p>
+    </div>
+
+    <section class="hub-section" id="accountSection" hidden>
+      <div class="section-title">
+        <span>MEMBER ACCOUNT</span>
+        <h2>MY BLACKSTONE <em>PROFILE.</em></h2>
+      </div>
+      <div class="account-layout">
+        <article class="profile-card">
+          <div class="profile-top">
+            <div class="avatar" id="profileAvatar">B</div>
+            <div><small id="profileRole">MEMBER</small><h3 id="profileName">Blackstone Member</h3><p id="profileEmail"></p></div>
+          </div>
+          <dl>
+            <div><dt>Character</dt><dd id="profileCharacter">Not set</dd></div>
+            <div><dt>Department</dt><dd id="profileDepartment">Not assigned</dd></div>
+            <div><dt>Rank</dt><dd id="profileRank">Member</dd></div>
+            <div><dt>Discord</dt><dd id="profileDiscord">Not linked</dd></div>
+          </dl>
+          <div class="profile-actions">
+            <a href="admin.html" class="button primary" id="openAdmin" hidden>Open Admin Panel</a>
+            <button type="button" class="button secondary" id="logoutButton">Sign Out</button>
+          </div>
+        </article>
+
+        <form class="profile-form" id="profileForm">
+          <div class="form-heading"><div><small>ACCOUNT DETAILS</small><h3>Update your profile</h3></div><span id="profileSaveStatus"></span></div>
+          <label><span>Display name</span><input type="text" name="displayName" maxlength="120" /></label>
+          <label><span>Discord username</span><input type="text" name="discordUsername" maxlength="120" /></label>
+          <label><span>Discord user ID</span><input type="text" name="discordId" pattern="[0-9]{15,20}" maxlength="20" /></label>
+          <label><span>Primary character name</span><input type="text" name="characterName" maxlength="160" /></label>
+          <button class="button primary" type="submit">Save Profile</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="hub-section">
+      <div class="section-title">
+        <span>LIVE INTELLIGENCE</span>
+        <h2>COMMUNITY <em>ANNOUNCEMENTS.</em></h2>
+      </div>
+      <div class="announcement-grid" id="announcementGrid"><div class="loading-card">Loading announcements…</div></div>
+    </section>
+
+    <section class="hub-section">
+      <div class="section-title split-title">
+        <div><span>CHOOSE YOUR PATH</span><h2>ACTIVE <em>DEPARTMENTS.</em></h2></div>
+        <a href="apply.html" class="text-link">APPLY NOW ↗</a>
+      </div>
+      <div class="department-grid" id="portalDepartments"><div class="loading-card">Loading departments…</div></div>
+    </section>
+
+    <section class="hub-section two-column-section">
+      <div>
+        <div class="section-title"><span>UPCOMING</span><h2>COMMUNITY <em>EVENTS.</em></h2></div>
+        <div class="event-list" id="eventList"><div class="loading-card">Loading events…</div></div>
+      </div>
+      <div>
+        <div class="section-title"><span>LEADERSHIP & STAFF</span><h2>MEET THE <em>TEAM.</em></h2></div>
+        <div class="staff-list" id="portalStaff"><div class="loading-card">Loading staff…</div></div>
+      </div>
+    </section>
+
+    <section class="hub-section gallery-feature" id="featuredImagesSection" hidden>
+      <div class="section-title split-title">
+        <div><span>FEATURED MEDIA</span><h2>BLACKSTONE <em>IMAGES.</em></h2></div>
+        <a href="gallery.html" class="text-link">OPEN LIVE DISCORD GALLERY ↗</a>
+      </div>
+      <div class="featured-grid" id="featuredImages"></div>
+    </section>
+
+    <section class="quick-actions">
+      <a href="rules.html"><span>01</span><strong>Read Rules</strong><small>Official community standards</small></a>
+      <a href="apply.html"><span>02</span><strong>Applications</strong><small>Whitelist, departments and staff</small></a>
+      <a href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer"><span>03</span><strong>Support</strong><small>Open an official Discord ticket</small></a>
+      <a href="gallery.html"><span>04</span><strong>Gallery</strong><small>Images from the Discord channel</small></a>
+    </section>
+  </main>
+
+  <footer class="portal-footer">
+    <span>© <b id="portalYear"></b> Blackstone RP</span>
+    <a href="login.html?next=admin">Staff Login</a>
+  </footer>
+
+  <div class="modal" id="loginModal" aria-hidden="true">
+    <button type="button" class="modal-backdrop" data-close-login aria-label="Close sign in"></button>
+    <section class="login-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <button type="button" class="modal-close" data-close-login aria-label="Close">×</button>
+      <img src="assets/blackstone-logo.png" alt="" />
+      <span>SECURE MEMBER ACCESS</span>
+      <h2 id="loginTitle">SIGN IN.</h2>
+      <a class="discord-login-button" id="discordSignIn" href="api/portal?action=discord-login" hidden><span class="discord-mark">D</span><span><strong>Continue with Discord</strong><small>Links your Discord member and role information</small></span></a>
+      <div class="login-divider" id="loginDivider" hidden><span>OR USE STAFF EMAIL</span></div>
+      <form id="loginForm">
+        <label><span>Email address</span><input type="email" name="email" autocomplete="username" required /></label>
+        <label><span>Password</span><input type="password" name="password" autocomplete="current-password" required /></label>
+        <p class="form-message" id="loginMessage"></p>
+        <button class="button primary" type="submit">Sign In</button>
+      </form>
+      <small>Members can sign in with Discord when enabled. Staff email accounts are created by Blackstone RP administration.</small>
+    </section>
+  </div>
+
+  <script src="portal.js?v=3"></script>
+</body>
+</html>

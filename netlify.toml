@@ -1,0 +1,15 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/server-status"
+  to = "/.netlify/functions/server-status"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/discord-gallery"
+  to = "/.netlify/functions/discord-gallery"
+  status = 200
+  force = true

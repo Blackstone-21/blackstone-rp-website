@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050505" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Administration | Blackstone RP</title>
+  <link rel="icon" type="image/png" href="assets/blackstone-logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=2" />
+</head>
+<body>
+  <div class="admin-ambient"></div>
+
+  <main class="login-screen" id="loginScreen">
+    <section class="login-panel">
+      <a href="index.html" class="login-brand"><img src="assets/blackstone-logo.png" alt="Blackstone RP logo" /><span><strong>BLACKSTONE</strong><small>ADMINISTRATION</small></span></a>
+      <span class="secure-label">SECURE STAFF ACCESS</span>
+      <h1>COMMAND<br /><em>CENTRE.</em></h1>
+      <p>Manage members, accounts, roles, departments, announcements, events, applications and website content through the shared Blackstone RP backend.</p>
+      <a class="discord-admin-login" href="api/portal?action=discord-login&amp;returnTo=admin">Continue with Discord</a>
+      <div class="admin-login-divider"><span>OR USE STAFF EMAIL</span></div>
+      <form id="adminLoginForm">
+        <label><span>Email address</span><input type="email" name="email" autocomplete="username" required /></label>
+        <label><span>Password</span><input type="password" name="password" autocomplete="current-password" required /></label>
+        <p class="login-message" id="adminLoginMessage"></p>
+        <button type="submit" class="admin-button primary">Sign In</button>
+      </form>
+      <div class="setup-state" id="setupState"><strong>CHECKING VERCEL SETUP…</strong><p>Verifying database and authentication settings.</p></div>
+      <footer><a href="login.html">Login Page</a><a href="portal.html">Community Hub</a><a href="index.html">Public Website</a></footer>
+    </section>
+    <aside class="login-visual"><img src="assets/blackstone-logo.png" alt="" /><div><span>BLACKSTONE NETWORK</span><strong>AUTHORISED PERSONNEL ONLY</strong></div></aside>
+  </main>
+
+  <main class="admin-app" id="adminApp" hidden>
+    <aside class="admin-sidebar" id="adminSidebar">
+      <a href="index.html" class="sidebar-brand"><img src="assets/blackstone-logo.png" alt="" /><span><strong>BLACKSTONE</strong><small>ADMIN PANEL</small></span></a>
+      <div class="admin-identity"><div class="identity-avatar" id="identityAvatar">B</div><div><strong id="identityName">Staff Member</strong><small id="identityRole">STAFF</small></div></div>
+      <nav id="adminNav">
+        <button type="button" data-section="dashboard" data-permission="dashboard.view" class="active"><span>01</span>Dashboard</button>
+        <button type="button" data-section="announcements" data-permission="announcements.manage"><span>02</span>Announcements</button>
+        <button type="button" data-section="members" data-permission="members.manage"><span>03</span>Members</button>
+        <button type="button" data-section="users" data-permission="users.manage"><span>04</span>Accounts</button>
+        <button type="button" data-section="roles" data-permission="roles.manage"><span>05</span>Roles & Permissions</button>
+        <button type="button" data-section="departments" data-permission="departments.manage"><span>06</span>Departments</button>
+        <button type="button" data-section="events" data-permission="events.manage"><span>07</span>Events</button>
+        <button type="button" data-section="applications" data-permission="applications.manage"><span>08</span>Applications</button>
+        <button type="button" data-section="images" data-permission="images.manage"><span>09</span>Featured Images</button>
+        <button type="button" data-section="discord" data-permission="discord.sync"><span>10</span>Discord Sync</button>
+        <button type="button" data-section="audit" data-permission="audit.view"><span>11</span>Audit History</button>
+        <button type="button" data-section="settings" data-permission="settings.manage"><span>12</span>Settings</button>
+      </nav>
+      <div class="sidebar-footer"><a href="portal.html">Open Community Hub ↗</a><button type="button" id="adminLogout">Sign Out</button></div>
+    </aside>
+
+    <section class="admin-main">
+      <header class="admin-topbar">
+        <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle admin menu">☰</button>
+        <div><span id="sectionEyebrow">ADMINISTRATION OVERVIEW</span><h1 id="adminSectionTitle">Dashboard</h1></div>
+        <div class="topbar-actions"><span class="api-state" id="apiState"><i></i> SECURE CONNECTION</span><button type="button" id="refreshSection">Refresh</button></div>
+      </header>
+
+      <div class="admin-content">
+        <section class="admin-view active" id="dashboardView">
+          <div class="metric-grid" id="metricGrid"></div>
+          <div class="dashboard-columns">
+            <article class="dashboard-card"><header><div><span>APPLICATION QUEUE</span><h2>Recent Applications</h2></div><button type="button" data-open-section="applications">View All</button></header><div id="dashboardApplications" class="dashboard-list"></div></article>
+            <article class="dashboard-card"><header><div><span>SECURITY & CHANGES</span><h2>Recent Audit Activity</h2></div><button type="button" data-open-section="audit">View All</button></header><div id="dashboardAudit" class="dashboard-list"></div></article>
+          </div>
+          <div class="dashboard-actions">
+            <button type="button" data-open-section="announcements"><span>01</span><strong>Post Announcement</strong><small>Update the public portal feed</small></button>
+            <button type="button" data-open-section="members"><span>02</span><strong>Manage Members</strong><small>Ranks, departments and profiles</small></button>
+            <button type="button" data-open-section="applications"><span>03</span><strong>Review Applications</strong><small>Accept, decline or request changes</small></button>
+            <button type="button" data-open-section="discord"><span>04</span><strong>Sync Discord</strong><small>Import members without overwriting manual roles</small></button>
+          </div>
+        </section>
+
+        <section class="admin-view" id="dataView">
+          <div class="data-toolbar">
+            <div class="search-box"><span>⌕</span><input type="search" id="adminSearch" placeholder="Search records…" /></div>
+            <div><button type="button" class="admin-button secondary" id="exportSection">Export</button><button type="button" class="admin-button primary" id="addRecord">Add New</button></div>
+          </div>
+          <div class="data-card"><div class="table-wrap"><table><thead id="dataHead"></thead><tbody id="dataBody"></tbody></table></div><div class="empty-state" id="dataEmpty" hidden><img src="assets/blackstone-logo.png" alt="" /><strong>NO RECORDS FOUND</strong><p>Add a new record or change the search filter.</p></div></div>
+        </section>
+
+        <section class="admin-view" id="discordView">
+          <article class="discord-panel">
+            <div><span>DISCORD INTEGRATION</span><h2>SYNC MEMBERS &amp; ROLES.</h2><p>Import members from the Blackstone RP Discord server into the website registry. Existing profiles are matched by Discord user ID. Configure role priority, Discord role IDs, optional departments and default ranks under <strong>Roles &amp; Permissions</strong>. Manual role and department assignments are preserved during sync.</p></div>
+            <div class="discord-checklist"><div><b>1</b><span><strong>Bot &amp; OAuth Secrets</strong><small>Configure the bot token, Client ID and Client Secret privately in Vercel.</small></span></div><div><b>2</b><span><strong>Guild &amp; Role IDs</strong><small>Add DISCORD_GUILD_ID, then map Discord role IDs under Roles &amp; Permissions.</small></span></div><div><b>3</b><span><strong>Server Members Intent</strong><small>Enable it in the Discord Developer Portal so member and role data can be verified.</small></span></div></div>
+            <button type="button" class="admin-button primary" id="syncDiscord">Run Discord Sync</button>
+            <pre id="discordResult">No sync has been run in this session.</pre>
+          </article>
+        </section>
+
+        <section class="admin-view" id="settingsView">
+          <div class="settings-grid">
+            <form class="settings-card" id="communitySettingsForm"><header><span>PUBLIC CONFIGURATION</span><h2>Community Settings</h2></header><label><span>Community name</span><input type="text" name="communityName" /></label><label><span>Server endpoint</span><input type="text" name="serverEndpoint" /></label><label><span>FiveM join URL</span><input type="url" name="joinUrl" /></label><label><span>Discord invite URL</span><input type="url" name="discordUrl" /></label><label><span>Discord gallery channel ID</span><input type="text" name="galleryChannelId" /></label><label class="check-field"><input type="checkbox" name="applicationsOpen" /><span>Applications are open</span></label><button class="admin-button primary" type="submit">Save Settings</button></form>
+            <form class="settings-card" id="passwordForm"><header><span>ACCOUNT SECURITY</span><h2>Change Password</h2></header><label><span>Current password</span><input type="password" name="currentPassword" autocomplete="current-password" required /></label><label><span>New password</span><input type="password" name="newPassword" autocomplete="new-password" minlength="10" required /></label><label><span>Confirm new password</span><input type="password" name="confirmPassword" autocomplete="new-password" minlength="10" required /></label><p class="settings-message" id="passwordMessage"></p><button class="admin-button primary" type="submit">Update Password</button></form>
+            <article class="settings-card danger-card"><header><span>DATA MANAGEMENT</span><h2>Export Admin Data</h2></header><p>Download a JSON copy of members, content, applications, roles, settings and audit history. Password hashes are excluded.</p><button type="button" class="admin-button secondary" id="exportAll">Download Full Export</button></article>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="editor-modal" id="editorModal" aria-hidden="true">
+    <button type="button" class="editor-backdrop" data-close-editor aria-label="Close editor"></button>
+    <section class="editor-panel" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+      <header><div><span id="editorEyebrow">EDIT RECORD</span><h2 id="editorTitle">Record</h2></div><button type="button" data-close-editor aria-label="Close">×</button></header>
+      <form id="editorForm"><div class="editor-fields" id="editorFields"></div><p class="editor-message" id="editorMessage"></p><footer><button type="button" class="admin-button secondary" data-close-editor>Cancel</button><button type="submit" class="admin-button primary">Save Changes</button></footer></form>
+    </section>
+  </div>
+
+  <div class="toast" id="adminToast"></div>
+  <script src="admin.js?v=3"></script>
+</body>
+</html>
