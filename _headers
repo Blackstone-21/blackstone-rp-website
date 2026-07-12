@@ -1,9 +1,9 @@
 /api/server-status
-  Cache-Control: no-store, max-age=0
+  Cache-Control: public, max-age=10, s-maxage=20, stale-while-revalidate=60
   Access-Control-Allow-Origin: *
 
 /.netlify/functions/server-status
-  Cache-Control: no-store, max-age=0
+  Cache-Control: public, max-age=10, s-maxage=20, stale-while-revalidate=60
   Access-Control-Allow-Origin: *
 
 /api/discord-gallery
@@ -13,3 +13,12 @@
 /.netlify/functions/discord-gallery
   Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300
   Access-Control-Allow-Origin: *
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/*.js
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

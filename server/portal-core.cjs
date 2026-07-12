@@ -746,10 +746,10 @@ function readBody(req) {
   }
 }
 
-function json(res, status, body) {
+function json(res, status, body, cacheControl = 'no-store, max-age=0') {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.setHeader('Cache-Control', cacheControl);
   return res.end(JSON.stringify(body));
 }
 
@@ -1173,7 +1173,9 @@ async function completeDiscordOAuth(req, res, env) {
   const origin = requestOrigin(req, env);
   const assignedRole = websiteRoles.find((role) => role.id === user.roleId);
   const canOpenAdmin = Array.isArray(assignedRole?.permissions) && assignedRole.permissions.includes('dashboard.view');
-  const destination = statePayload.returnTo === 'admin' && canOpenAdmin ? 'admin.html' : 'portal.html?login=discord';
+  const destination = canOpenAdmin
+    ? 'admin.html'
+    : `login.html?loginError=${encodeURIComponent('This Discord account does not have authorised staff access.')}`;
   return redirect(res, 302, `${origin}/${destination}`);
 }
 
@@ -1318,7 +1320,12 @@ async function handlePortal(req, res, env = process.env) {
 
   try {
     if (action === 'public' && req.method === 'GET') {
-      return json(res, 200, { ok: true, ...(await getPublicPayload(env)) });
+      return json(
+        res,
+        200,
+        { ok: true, ...(await getPublicPayload(env)) },
+        'public, max-age=5, s-maxage=15, stale-while-revalidate=60'
+      );
     }
 
     if (action === 'setup-status' && req.method === 'GET') {

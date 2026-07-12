@@ -222,7 +222,8 @@
     $('#dataEmpty').hidden=filteredItems.length>0;$('.table-wrap').hidden=filteredItems.length===0;
   }
 
-  $('#adminSearch').addEventListener('input',event=>{const query=event.target.value.toLowerCase().trim();filteredItems=currentItems.filter(item=>JSON.stringify(item).toLowerCase().includes(query));renderTable()});
+  let searchTimer=0;
+  $('#adminSearch').addEventListener('input',event=>{const value=event.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{const query=value.toLowerCase().trim();filteredItems=query?currentItems.filter(item=>JSON.stringify(item).toLowerCase().includes(query)):[...currentItems];renderTable()},140)});
   $('#addRecord').addEventListener('click',()=>openEditor(null));
   $('#exportSection').addEventListener('click',()=>download(`blackstone-${currentSection}-${new Date().toISOString().slice(0,10)}.json`,currentItems));
 

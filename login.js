@@ -5,7 +5,6 @@
   const loginButton = document.querySelector('#discordLogin');
   const status = document.querySelector('#setupStatus');
   const params = new URLSearchParams(location.search);
-  const requestedNext = params.get('next') === 'admin' ? 'admin' : 'portal';
 
   document.querySelector('#loginYear').textContent = new Date().getFullYear();
 
@@ -31,19 +30,17 @@
     return payload;
   }
 
-  function targetFor(user) {
-    const canAdmin = Boolean(user?.permissions?.includes('dashboard.view'));
-    if (requestedNext === 'admin' && canAdmin) return 'admin.html';
-    return canAdmin ? 'admin.html' : 'portal.html';
+  function hasStaffAccess(user) {
+    return Boolean(user?.permissions?.includes('dashboard.view'));
   }
 
   function setReady() {
-    loginButton.href = `api/discord-login?returnTo=${encodeURIComponent(requestedNext)}`;
+    loginButton.href = 'api/discord-login?returnTo=admin';
     loginButton.classList.remove('disabled');
     loginButton.removeAttribute('aria-disabled');
     status.classList.add('ready');
     status.classList.remove('error');
-    status.querySelector('span').textContent = 'Discord sign-in is ready';
+    status.querySelector('span').textContent = 'Discord staff sign-in is ready';
   }
 
   function setError(message) {
@@ -71,24 +68,34 @@
       );
 
       if (!ready) {
-        setError('Discord sign-in is temporarily unavailable. Please contact staff through Discord.');
+        setError('Staff sign-in is temporarily unavailable. Please contact a Founder.');
         return;
       }
       setReady();
     } catch (error) {
-      setError(error.message || 'Discord sign-in is temporarily unavailable.');
+      setError(error.message || 'Staff sign-in is temporarily unavailable.');
     }
   }
 
   async function restoreSession() {
     try {
       const data = await api('me');
-      if (data.user) location.replace(targetFor(data.user));
+      if (!data.user) return;
+      if (hasStaffAccess(data.user)) {
+        location.replace('admin.html');
+        return;
+      }
+      setError('This Discord account does not have authorised staff access.');
     } catch {
-      // No active session. Remain on the login page.
+      // No active session. Remain on the staff login page.
     }
   }
 
-  checkSetup();
+  const loginError = params.get('loginError');
+  if (loginError) setError(loginError);
+
+  checkSetup().then(() => {
+    if (loginError) setError(loginError);
+  });
   restoreSession();
 })();

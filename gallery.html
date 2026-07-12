@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#050505" />
   <meta name="description" content="Blackstone RP live Discord gallery." />
   <title>Gallery | Blackstone RP</title>
-  <link rel="icon" type="image/png" href="assets/blackstone-logo.png" />
+  <link rel="icon" type="image/png" href="assets/blackstone-favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
@@ -15,14 +15,14 @@
 <body>
   <div class="gallery-background"></div>
   <header class="gallery-header">
-    <a href="index.html" class="gallery-brand"><img src="assets/blackstone-logo.png" alt="Blackstone RP logo" /><span><strong>BLACKSTONE</strong><small>LIVE GALLERY</small></span></a>
-    <nav><a href="index.html">Website</a><a href="portal.html">Community Hub</a><a href="rules.html">Rules</a><a href="login.html" class="gallery-login">Login</a></nav>
+    <a href="index.html" class="gallery-brand"><img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="Blackstone RP logo" /><span><strong>BLACKSTONE</strong><small>LIVE GALLERY</small></span></a>
+    <nav><a href="index.html">Website</a><a href="portal.html">Community Hub</a><a href="rules.html">Rules</a><a href="login.html" class="gallery-login">Staff Login</a></nav>
   </header>
 
   <main>
     <section class="gallery-hero">
       <div><span class="eyebrow"><i></i> OFFICIAL DISCORD CHANNEL</span><h1>SERVER<br /><em>GALLERY.</em></h1><p>Images posted in the official Blackstone RP gallery channel are loaded automatically from Discord.</p></div>
-      <div class="gallery-summary"><img src="assets/blackstone-logo.png" alt="" /><div><small>LIVE FEED</small><strong id="galleryStatus">CONNECTING TO DISCORD…</strong><span>Channel 1520414735772811394</span></div></div>
+      <div class="gallery-summary"><img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="" /><div><small>LIVE FEED</small><strong id="galleryStatus">CONNECTING TO DISCORD…</strong><span>Channel 1520414735772811394</span></div></div>
     </section>
 
     <section class="gallery-content">
@@ -30,13 +30,13 @@
       <div class="gallery-grid" id="galleryGrid" aria-live="polite" aria-busy="true">
         <div class="gallery-skeleton"></div><div class="gallery-skeleton"></div><div class="gallery-skeleton"></div><div class="gallery-skeleton"></div><div class="gallery-skeleton"></div><div class="gallery-skeleton"></div>
       </div>
-      <div class="gallery-empty" id="galleryEmpty" hidden><img src="assets/blackstone-logo.png" alt="" /><strong id="galleryEmptyTitle">NO GALLERY IMAGES YET</strong><p id="galleryEmptyMessage">Images uploaded to the Discord gallery channel will appear here.</p><a href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer">Open Discord ↗</a></div>
+      <div class="gallery-empty" id="galleryEmpty" hidden><img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="" /><strong id="galleryEmptyTitle">NO GALLERY IMAGES YET</strong><p id="galleryEmptyMessage">Images uploaded to the Discord gallery channel will appear here.</p><a href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer">Open Discord ↗</a></div>
     </section>
   </main>
 
   <footer><span>© <b id="galleryYear"></b> Blackstone RP</span><div><a href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer">Discord</a><a href="https://cfx.re/join/4xlaj5" target="_blank" rel="noopener noreferrer">Connect to FiveM</a></div></footer>
 
   <div class="lightbox" id="galleryLightbox" aria-hidden="true"><button class="lightbox-backdrop" type="button" data-close-lightbox aria-label="Close"></button><figure><button type="button" class="lightbox-close" data-close-lightbox aria-label="Close">×</button><img id="lightboxImage" src="" alt="" /><figcaption id="lightboxCaption"></figcaption></figure></div>
-  <script src="gallery.js?v=1"></script>
+  <script src="gallery.js?v=2"></script>
 </body>
 </html>

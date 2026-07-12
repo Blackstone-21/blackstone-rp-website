@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050505" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
-  <meta name="description" content="Sign in to the official Blackstone RP community portal using Discord OAuth." />
-  <title>Member Login | Blackstone RP</title>
-  <link rel="icon" type="image/png" href="assets/blackstone-logo.png" />
+  <meta name="description" content="Authorised Blackstone RP staff can sign in securely using Discord OAuth." />
+  <title>Staff Login | Blackstone RP</title>
+  <link rel="icon" type="image/png" href="assets/blackstone-favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
@@ -18,23 +18,22 @@
 
   <header class="login-header">
     <a href="index.html" class="login-brand">
-      <img src="assets/blackstone-logo.png" alt="Blackstone RP logo" />
-      <span><strong>BLACKSTONE RP</strong><small>OFFICIAL COMMUNITY PORTAL</small></span>
+      <img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="Blackstone RP logo" />
+      <span><strong>BLACKSTONE RP</strong><small>OFFICIAL STAFF PORTAL</small></span>
     </a>
     <nav aria-label="Main navigation">
       <a href="index.html">Website</a>
       <a href="gallery.html">Gallery</a>
-      <a href="portal.html">Community Hub</a>
     </nav>
   </header>
 
   <main class="login-shell">
     <section class="login-copy">
       <span class="eyebrow"><i></i> OFFICIAL BLACKSTONE RP WEBSITE</span>
-      <h1>MEMBER<br /><em>PORTAL.</em></h1>
+      <h1>STAFF<br /><em>PORTAL.</em></h1>
       <p>
-        Sign in through Discord to access your Blackstone RP profile, applications,
-        community information and authorised staff tools.
+        This sign-in is restricted to authorised Blackstone RP staff. Your Discord roles
+        determine whether you can access the administration panel.
       </p>
 
       <div class="trust-panel">
@@ -42,21 +41,21 @@
         <p>
           Selecting “Continue with Discord” sends you to the official
           <code>discord.com</code> authorisation page. Discord then returns only
-          the approved account details needed to link your Blackstone RP membership.
+          the approved account details needed to verify your Blackstone RP staff role.
         </p>
       </div>
 
       <div class="login-features">
         <div><span>01</span><strong>DISCORD OAUTH</strong><small>Authentication is completed by Discord</small></div>
-        <div><span>02</span><strong>ROLE-BASED ACCESS</strong><small>Staff tools follow approved Discord roles</small></div>
+        <div><span>02</span><strong>STAFF-ONLY ACCESS</strong><small>Only mapped staff roles can enter</small></div>
         <div><span>03</span><strong>PRIVATE SESSIONS</strong><small>Secure server-side sessions protect access</small></div>
       </div>
     </section>
 
     <section class="access-card" aria-labelledby="accessTitle">
       <div class="access-head">
-        <img src="assets/blackstone-logo.png" alt="" />
-        <div><span>MEMBER AUTHENTICATION</span><h2 id="accessTitle">SIGN IN</h2></div>
+        <img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="" />
+        <div><span>STAFF AUTHENTICATION</span><h2 id="accessTitle">SIGN IN</h2></div>
       </div>
 
       <a class="discord-button disabled" id="discordLogin" href="#" aria-disabled="true">
@@ -73,8 +72,8 @@
 
       <p class="access-note">
         Blackstone RP does not ask for your Discord password, payment-card details,
-        phone password or authentication codes. Staff access is assigned from your
-        linked Discord roles and website permissions.
+        phone password or authentication codes. Access is limited to Discord accounts
+        mapped to an authorised website staff role.
       </p>
 
       <div class="legal-links">

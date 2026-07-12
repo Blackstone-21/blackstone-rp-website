@@ -17,7 +17,7 @@
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
       credentials: 'same-origin',
-      cache: 'no-store'
+      cache: action === 'public' ? 'default' : 'no-store'
     });
     const payload = await response.json().catch(() => ({ ok: false, message: 'Invalid server response.' }));
     if (!response.ok || payload.ok === false) {
@@ -41,7 +41,7 @@
   async function loadServerStatus() {
     try {
       const started = performance.now();
-      const response = await fetch(`api/server-status?_=${Date.now()}`, { cache: 'no-store' });
+      const response = await fetch('api/server-status', { cache: 'default' });
       const data = await response.json();
       const responseTime = data.responseMs || Math.round(performance.now() - started);
       setText('#portalServerStatus', data.online ? 'ONLINE' : 'OFFLINE');
@@ -223,17 +223,7 @@
   }
 
   async function loadAuthOptions() {
-    try {
-      const data = await api('setup-status');
-      const discordButton = $('#discordSignIn');
-      const divider = $('#loginDivider');
-      const enabled = Boolean(data.discordOAuthConfigured && data.databaseConfigured && data.authConfigured);
-      if (discordButton) discordButton.hidden = !enabled;
-      if (divider) divider.hidden = !enabled;
-    } catch {
-      $('#discordSignIn').hidden = true;
-      $('#loginDivider').hidden = true;
-    }
+    // Member sign-in has been removed. Staff authenticate on login.html.
   }
 
   async function loadPublicContent() {
@@ -254,16 +244,6 @@
     }
   }
 
-  function openLogin() {
-    $('#loginModal').classList.add('open');
-    $('#loginModal').setAttribute('aria-hidden', 'false');
-    setTimeout(() => $('#loginForm input')?.focus(), 50);
-  }
-
-  function closeLogin() {
-    $('#loginModal').classList.remove('open');
-    $('#loginModal').setAttribute('aria-hidden', 'true');
-  }
 
   function applyAccount(user, member) {
     currentUser = user;
@@ -292,7 +272,7 @@
     csrfToken = '';
     sessionStorage.removeItem('bsrp_csrf');
     $('#accountSection').hidden = true;
-    $('#accountButton').textContent = 'Sign In';
+    $('#accountButton').textContent = 'Staff Login';
   }
 
   async function restoreSession() {
@@ -312,32 +292,11 @@
   }
 
   $('#accountButton').addEventListener('click', () => {
-    if (currentUser) document.querySelector('#accountSection')?.scrollIntoView({ behavior: 'smooth' });
-    else openLogin();
-  });
-  document.querySelectorAll('[data-close-login]').forEach((element) => element.addEventListener('click', closeLogin));
-
-  $('#loginForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const button = form.querySelector('button[type="submit"]');
-    const message = $('#loginMessage');
-    button.disabled = true;
-    button.textContent = 'Signing In…';
-    message.textContent = '';
-    try {
-      const data = await api('login', { method: 'POST', body: Object.fromEntries(new FormData(form)) });
-      const me = await api('me');
-      applyAccount(data.user || me.user, me.member);
-      closeLogin();
-      form.reset();
-      $('#accountSection').scrollIntoView({ behavior: 'smooth' });
-    } catch (error) {
-      message.textContent = error.message;
-    } finally {
-      button.disabled = false;
-      button.textContent = 'Sign In';
+    if (currentUser && (currentUser.permissions || []).includes('dashboard.view')) {
+      location.href = 'admin.html';
+      return;
     }
+    location.href = 'login.html';
   });
 
   $('#profileForm').addEventListener('submit', async (event) => {
@@ -362,16 +321,8 @@
   function handleLoginResult() {
     const params = new URLSearchParams(window.location.search);
     const error = params.get('loginError');
-    const success = params.get('login');
     if (error) {
-      $('#loginMessage').textContent = error;
-      openLogin();
-    }
-    if (error || success) {
-      params.delete('loginError');
-      params.delete('login');
-      const query = params.toString();
-      history.replaceState({}, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+      location.replace(`login.html?loginError=${encodeURIComponent(error)}`);
     }
   }
 
@@ -381,5 +332,5 @@
   loadServerStatus();
   loadPublicContent();
   restoreSession();
-  setInterval(loadServerStatus, 30000);
+  setInterval(() => { if (!document.hidden) loadServerStatus(); }, 30000);
 })();

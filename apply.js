@@ -57,7 +57,7 @@
     try {
       const [setupResponse, publicResponse] = await Promise.all([
         fetch('api/portal?action=setup-status', { cache: 'no-store' }),
-        fetch('api/portal?action=public', { cache: 'no-store' })
+        fetch('api/portal?action=public', { cache: 'default' })
       ]);
       const setup = await setupResponse.json();
       const publicData = await publicResponse.json();

@@ -2,7 +2,7 @@
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Cache-Control: no-store, max-age=0');
+header('Cache-Control: public, max-age=10, stale-while-revalidate=60');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -20,12 +20,12 @@ function fetch_json($url) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 7,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 5,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTPHEADER => [
                 'Accept: application/json',
-                'User-Agent: BlackstoneRP-Website/2.0'
+                'User-Agent: BlackstoneRP-Website/4.2'
             ]
         ]);
         $body = curl_exec($ch);
@@ -45,9 +45,9 @@ function fetch_json($url) {
     }
 
     $context = stream_context_create(['http' => [
-        'timeout' => 7,
+        'timeout' => 5,
         'ignore_errors' => true,
-        'header' => "Accept: application/json\r\nUser-Agent: BlackstoneRP-Website/2.0\r\n"
+        'header' => "Accept: application/json\r\nUser-Agent: BlackstoneRP-Website/4.2\r\n"
     ]]);
     $body = @file_get_contents($url, false, $context);
     if ($body === false) return null;

@@ -21,11 +21,14 @@
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 12000);
-        const response = await fetch(endpoint, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: controller.signal });
-        clearTimeout(timeout);
-        const payload = await response.json().catch(() => ({ ok: false, message: `The gallery API returned a non-JSON response (${response.status}).` }));
-        if (!response.ok || payload.ok === false) throw new Error(payload.message || `Gallery request failed (${response.status}).`);
-        return payload;
+        try {
+          const response = await fetch(endpoint, { headers: { Accept: 'application/json' }, cache: 'default', signal: controller.signal });
+          const payload = await response.json().catch(() => ({ ok: false, message: `The gallery API returned a non-JSON response (${response.status}).` }));
+          if (!response.ok || payload.ok === false) throw new Error(payload.message || `Gallery request failed (${response.status}).`);
+          return payload;
+        } finally {
+          clearTimeout(timeout);
+        }
       } catch (error) {
         lastError = error;
       }
@@ -83,6 +86,9 @@
       picture.alt = image.caption || image.filename || 'Blackstone RP gallery image';
       picture.loading = 'lazy';
       picture.decoding = 'async';
+      picture.referrerPolicy = 'no-referrer';
+      if (Number(image.width) > 0) picture.width = Number(image.width);
+      if (Number(image.height) > 0) picture.height = Number(image.height);
       button.append(picture);
       button.addEventListener('click', () => openLightbox(image));
       const copy = document.createElement('div');

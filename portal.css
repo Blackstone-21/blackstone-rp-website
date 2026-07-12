@@ -6,3 +6,12 @@
 .announcement-card footer a{color:var(--silver);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 .announcement-card footer a:hover{color:#fff}
 @media(max-width:620px){.announcement-card footer{align-items:flex-start;flex-direction:column}}
+
+
+/* Reduce initial rendering work for content below the portal hero. */
+@supports (content-visibility: auto) {
+  .hub-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 700px;
+  }
+}

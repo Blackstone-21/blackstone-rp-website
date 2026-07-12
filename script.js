@@ -45,11 +45,25 @@
     });
   });
 
-  window.addEventListener('mousemove', (event) => {
-    if (!cursorGlow) return;
-    cursorGlow.style.left = `${event.clientX}px`;
-    cursorGlow.style.top = `${event.clientY}px`;
-  }, { passive: true });
+  // Throttle the decorative cursor glow to one DOM write per animation frame.
+  // It is disabled on touch/coarse-pointer devices where it cannot be used.
+  const finePointer = window.matchMedia('(pointer: fine)').matches;
+  let cursorFrame = 0;
+  let cursorX = 0;
+  let cursorY = 0;
+  if (cursorGlow && finePointer) {
+    window.addEventListener('mousemove', (event) => {
+      cursorX = event.clientX;
+      cursorY = event.clientY;
+      if (cursorFrame) return;
+      cursorFrame = window.requestAnimationFrame(() => {
+        cursorFrame = 0;
+        cursorGlow.style.transform = `translate3d(${cursorX - 190}px, ${cursorY - 190}px, 0)`;
+      });
+    }, { passive: true });
+  } else if (cursorGlow) {
+    cursorGlow.hidden = true;
+  }
 
   const counters = $$('[data-count]');
   if ('IntersectionObserver' in window && counters.length) {
@@ -152,7 +166,7 @@
   // Discord-powered gallery. The bot token is used only by the server-side endpoint.
   const galleryConfig = {
     refreshMs: 180000,
-    requestTimeoutMs: 9000,
+    requestTimeoutMs: 6000,
     maxImages: 24
   };
 
@@ -186,10 +200,11 @@
   function getGallerySources() {
     if (!['http:', 'https:'].includes(window.location.protocol)) return [];
 
+    // /api/discord-gallery works on Vercel and is redirected to the
+    // Netlify function by netlify.toml. PHP remains a compatibility fallback.
     return [
       [new URL('api/discord-gallery', document.baseURI).href, 'WEBSITE GALLERY API'],
-      [new URL('discord-gallery.php', document.baseURI).href, 'PHP GALLERY API'],
-      [new URL('/.netlify/functions/discord-gallery', window.location.origin).href, 'NETLIFY GALLERY API']
+      [new URL('discord-gallery.php', document.baseURI).href, 'PHP GALLERY API']
     ];
   }
 
@@ -198,10 +213,9 @@
     const timeout = window.setTimeout(() => controller.abort(), galleryConfig.requestTimeoutMs);
 
     try {
-      const separator = url.includes('?') ? '&' : '?';
-      const response = await fetch(`${url}${separator}_=${Date.now()}`, {
+      const response = await fetch(url, {
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        cache: 'default',
         signal: controller.signal
       });
 
@@ -238,20 +252,23 @@
       };
     }
 
-    let configurationResult = null;
     const errors = [];
 
     for (const [url, label] of sources) {
       try {
         return await fetchGallerySource(url, label);
       } catch (error) {
-        if (error?.payload?.configured === false) configurationResult = error.payload;
+        if (error?.payload?.configured === false) {
+          // A valid API response saying setup is missing will not be fixed by
+          // retrying another endpoint on the same deployment.
+          return error.payload;
+        }
         const reason = error?.name === 'AbortError' ? 'request timed out' : error.message;
         errors.push(`${label}: ${reason}`);
       }
     }
 
-    return configurationResult || {
+    return {
       ok: false,
       configured: true,
       message: 'The Discord gallery feed is temporarily unavailable.',
@@ -411,16 +428,40 @@
     }
   }
 
-  galleryElements.refresh?.addEventListener('click', updateDiscordGallery);
+  let galleryStarted = false;
+  function startDiscordGallery() {
+    if (galleryStarted || !galleryElements.grid) return;
+    galleryStarted = true;
+    updateDiscordGallery();
+    window.setInterval(() => {
+      if (!document.hidden) updateDiscordGallery();
+    }, galleryConfig.refreshMs);
+  }
+
+  galleryElements.refresh?.addEventListener('click', () => {
+    startDiscordGallery();
+    updateDiscordGallery();
+  });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeGalleryModal();
   });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && galleryElements.grid?.childElementCount === 0) updateDiscordGallery();
+    if (!document.hidden && galleryStarted && galleryElements.grid?.childElementCount === 0) updateDiscordGallery();
   });
 
-  updateDiscordGallery();
-  window.setInterval(updateDiscordGallery, galleryConfig.refreshMs);
+  // The gallery is far below the fold. Delay its API call and image downloads
+  // until the user is close to it, improving the initial page load.
+  const gallerySection = galleryElements.grid?.closest('section');
+  if (gallerySection && 'IntersectionObserver' in window) {
+    const galleryObserver = new IntersectionObserver((entries, observer) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      observer.disconnect();
+      startDiscordGallery();
+    }, { rootMargin: '600px 0px' });
+    galleryObserver.observe(gallerySection);
+  } else {
+    startDiscordGallery();
+  }
 
   // Updated live FiveM server status.
   const serverConfig = {
@@ -558,9 +599,8 @@
     const startedAt = performance.now();
 
     try {
-      const separator = url.includes('?') ? '&' : '?';
-      const response = await fetch(`${url}${separator}_=${Date.now()}`, {
-        cache: 'no-store',
+      const response = await fetch(url, {
+        cache: 'default',
         headers: { Accept: 'application/json' },
         signal: controller.signal
       });
@@ -573,23 +613,22 @@
   }
 
   function getStatusSources() {
-    const sources = [
-      [`https://servers-frontend.fivem.net/api/servers/single/${serverConfig.joinCode}`, 'CFX SERVER LIST']
-    ];
+    const sources = [];
 
     if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-      sources.push(
-        [new URL('api/server-status', document.baseURI).href, 'WEBSITE STATUS PROXY'],
-        [new URL('server-status.php', document.baseURI).href, 'PHP STATUS PROXY'],
-        [new URL('/.netlify/functions/server-status', window.location.origin).href, 'NETLIFY STATUS PROXY']
-      );
+      // Prefer the same-origin proxy so all visitors can share its short CDN cache.
+      sources.push([new URL('api/server-status', document.baseURI).href, 'WEBSITE STATUS PROXY']);
+    }
+
+    // Static-hosting fallback. The browser may use this when no serverless API exists.
+    sources.push([`https://servers-frontend.fivem.net/api/servers/single/${serverConfig.joinCode}`, 'CFX SERVER LIST']);
+
+    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+      sources.push([new URL('server-status.php', document.baseURI).href, 'PHP STATUS PROXY']);
     }
 
     if (window.location.protocol !== 'https:') {
-      sources.push([
-        `http://${serverConfig.endpoint}/dynamic.json`,
-        'DIRECT SERVER FEED'
-      ]);
+      sources.push([`http://${serverConfig.endpoint}/dynamic.json`, 'DIRECT SERVER FEED']);
     }
 
     return sources;
@@ -600,12 +639,15 @@
     const errors = [];
     let primaryOffline = null;
 
-    // The public Cfx listing is the fastest option and also works on static hosting.
+    // Prefer the shared same-origin status proxy when the site is hosted.
     if (sources.length) {
       const [url, label] = sources[0];
       try {
         const result = await fetchJsonWithTimeout(url, label);
         if (result.online) return result;
+        // The same-origin proxy already checks all server sources. Trust its
+        // completed offline result rather than repeating those requests.
+        if (label === 'WEBSITE STATUS PROXY') return result;
         primaryOffline = result;
         errors.push(`${label}: server reported offline`);
       } catch (error) {
@@ -820,7 +862,9 @@
   });
 
   updateLiveServerStatus();
-  window.setInterval(updateLiveServerStatus, serverConfig.refreshMs);
+  window.setInterval(() => {
+    if (!document.hidden) updateLiveServerStatus();
+  }, serverConfig.refreshMs);
   window.setInterval(updateRefreshCountdown, 1000);
   updateRefreshCountdown();
 

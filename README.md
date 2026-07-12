@@ -2,11 +2,16 @@
 
 A responsive Blackstone RP website that preserves the supplied logo exactly as provided and follows its black, graphite, steel, silver and white palette.
 
+
+## Performance update 4.2
+
+This build includes optimized WebP assets, static caching, shared live-status caching, deferred Discord gallery loading, background-tab polling suspension and smoother large-list searching in the Admin panel. See `CHANGELOG-PERFORMANCE-V4.2.md`.
+
 ## New shared website portal
 
 The mobile-app functions are now available through the website:
 
-- `portal.html` — community hub with live server information, announcements, departments, events, staff, featured images, Discord/member login and editable profile/character details.
+- `portal.html` — community hub with live server information, announcements, departments, events, staff, featured images, staff access and editable profile/character details.
 - `apply.html` — guided civilian, Police, EMS and Staff application form connected to the staff review queue.
 - `admin.html` — secure role-based administration panel.
 - `api/portal.js` and `server/portal-core.cjs` — shared Vercel backend and data layer.
@@ -26,7 +31,7 @@ Authorised staff can manage:
 - Applications, outcomes and private staff notes
 - Featured images
 - Community settings and links
-- Discord OAuth member sign-in
+- Discord OAuth staff sign-in
 - Discord member/role synchronisation and explicit role-ID mapping
 - Audit history
 - Secure data exports
@@ -90,7 +95,7 @@ The Gallery tab loads recent image attachments from Discord channel `15204147357
 
 ## Website access pages
 
-- `login.html` — shared Discord/member and secure staff login.
+- `login.html` — Discord OAuth staff-only login; accounts without `dashboard.view` are denied access.
 - `portal.html` — community hub and member profile.
 - `admin.html` — v12-style role-based administration command centre.
 - `gallery.html` — dedicated Discord-powered gallery.
@@ -118,3 +123,12 @@ Optional settings:
 - `DISCORD_ANNOUNCEMENTS_CROSSPOST=true` to automatically publish bot messages from a Discord Announcement channel.
 
 The bot needs View Channel, Read Message History, Send Messages and Embed Links in the announcements channel. Keep Message Content Intent enabled. Never put the bot token in GitHub.
+
+
+## Staff-only login update
+
+- The public member login has been removed.
+- `login.html` is now labelled and enforced as staff-only.
+- Discord sign-in always requests the Admin destination.
+- Accounts without the `dashboard.view` permission are returned to the staff login page.
+- The public Community Hub no longer exposes its former member sign-in modal.

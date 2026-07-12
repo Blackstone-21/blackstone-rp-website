@@ -1,6 +1,9 @@
 const ENDPOINT = '163.227.178.25:30123';
 const JOIN_CODE = '4xlaj5';
 const JOIN_URL = 'https://cfx.re/join/4xlaj5';
+const CACHE_TTL_MS = 20000;
+let statusCache = { expiresAt: 0, body: null };
+let inFlight = null;
 
 function clean(value = '') {
   return String(value)
@@ -19,7 +22,7 @@ function firstNumber(...values) {
   return 0;
 }
 
-async function getJson(url, timeoutMs = 6500) {
+async function getJson(url, timeoutMs = 4500) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const startedAt = Date.now();
@@ -28,7 +31,7 @@ async function getJson(url, timeoutMs = 6500) {
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'BlackstoneRP-Website/2.0'
+        'User-Agent': 'BlackstoneRP-Website/4.2'
       },
       signal: controller.signal,
       cache: 'no-store'
@@ -94,22 +97,35 @@ function normalise(payload, source, responseMs) {
   };
 }
 
+async function runAttempt(url, source) {
+  try {
+    const result = await getJson(url);
+    return normalise(result.payload, source, result.responseMs);
+  } catch (error) {
+    const reason = error?.name === 'AbortError' ? 'request timed out' : error.message;
+    throw new Error(`${source}: ${reason}`);
+  }
+}
+
 async function checkStatus(proxyName) {
-  const attempts = [
-    [`https://servers-frontend.fivem.net/api/servers/single/${JOIN_CODE}`, 'CFX SERVER LIST'],
+  const primary = [`https://servers-frontend.fivem.net/api/servers/single/${JOIN_CODE}`, 'CFX SERVER LIST'];
+  const fallbackAttempts = [
     [`http://${ENDPOINT}/dynamic.json`, 'DIRECT SERVER FEED'],
     [`http://${ENDPOINT}/info.json`, 'DIRECT SERVER INFO']
   ];
   const errors = [];
 
-  for (const [url, source] of attempts) {
-    try {
-      const result = await getJson(url);
-      return normalise(result.payload, source, result.responseMs);
-    } catch (error) {
-      const reason = error?.name === 'AbortError' ? 'request timed out' : error.message;
-      errors.push(`${source}: ${reason}`);
-    }
+  try {
+    return await runAttempt(...primary);
+  } catch (error) {
+    errors.push(error.message);
+  }
+
+  try {
+    return await Promise.any(fallbackAttempts.map((attempt) => runAttempt(...attempt)));
+  } catch (aggregate) {
+    const reasons = Array.isArray(aggregate?.errors) ? aggregate.errors : [];
+    errors.push(...reasons.map((error) => error?.message || String(error)));
   }
 
   return {
@@ -128,11 +144,26 @@ async function checkStatus(proxyName) {
   };
 }
 
+async function getCachedStatus(proxyName) {
+  if (statusCache.body && statusCache.expiresAt > Date.now()) return statusCache.body;
+  if (inFlight) return inFlight;
+
+  inFlight = checkStatus(proxyName)
+    .then((body) => {
+      statusCache = { body, expiresAt: Date.now() + CACHE_TTL_MS };
+      return body;
+    })
+    .finally(() => { inFlight = null; });
+  return inFlight;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.setHeader('Cache-Control', 'public, max-age=10, s-maxage=20, stale-while-revalidate=60');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  return res.status(200).json(await checkStatus('WEBSITE STATUS PROXY'));
+  if (req.method !== 'GET') return res.status(405).json({ ok: false, message: 'Method not allowed.' });
+  return res.status(200).json(await getCachedStatus('WEBSITE STATUS PROXY'));
 };

@@ -1,0 +1,25 @@
+Blackstone RP Website — Complete Staff-Only Performance Build v4.2
+
+Source repository: https://github.com/Blackstone-21/blackstone-rp-website
+Source branch reviewed: main
+Prepared: 12 July 2026
+
+This package includes the current website, Vercel API functions, Discord gallery,
+two-way Discord announcements, Upstash-backed portal/admin system, server status,
+Safe Browsing trust pages and security headers.
+
+Additional requested update included in this package:
+- Public member login removed.
+- Staff login uses Discord OAuth and requests the Admin destination.
+- Discord accounts require the dashboard.view permission to enter the Admin panel.
+- The Community Hub member sign-in modal has been removed.
+
+Secrets are not included. Keep all tokens, passwords and database credentials in
+Vercel Environment Variables only.
+
+Performance update included:
+- Optimized WebP images and small favicon.
+- Static asset and live API caching.
+- Deferred below-the-fold gallery loading.
+- Hidden-tab polling pause and smoother Admin search.
+- See CHANGELOG-PERFORMANCE-V4.2.md for details.

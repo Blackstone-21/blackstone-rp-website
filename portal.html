@@ -4,19 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050505" />
-  <meta name="description" content="Blackstone RP community and member portal." />
+  <meta name="description" content="Blackstone RP public community hub and staff information portal." />
   <title>Community Hub | Blackstone RP</title>
-  <link rel="icon" type="image/png" href="assets/blackstone-logo.png" />
+  <link rel="icon" type="image/png" href="assets/blackstone-favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="portal.css?v=3" />
+  <link rel="stylesheet" href="portal.css?v=4" />
 </head>
 <body>
   <div class="ambient"></div>
   <header class="portal-header">
     <a href="index.html" class="portal-brand">
-      <img src="assets/blackstone-logo.png" alt="Blackstone RP logo" />
+      <img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="Blackstone RP logo" />
       <span><strong>BLACKSTONE</strong><small>COMMUNITY HUB</small></span>
     </a>
     <nav>
@@ -25,7 +25,7 @@
       <a href="gallery.html">Gallery</a>
       <a href="apply.html">Apply</a>
       <a href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer">Discord</a>
-      <button type="button" id="accountButton" class="header-button">Sign In</button>
+      <button type="button" id="accountButton" class="header-button">Staff Login</button>
     </nav>
   </header>
 
@@ -34,7 +34,7 @@
       <div>
         <span class="eyebrow"><i></i> BLACKSTONE NETWORK</span>
         <h1>YOUR CITY.<br /><em>ONE HUB.</em></h1>
-        <p>Follow community updates, explore departments, submit applications, manage your member profile and access staff tools from one shared Blackstone RP portal.</p>
+        <p>Follow community updates, explore departments, submit applications and access authorised staff tools from one shared Blackstone RP portal.</p>
         <div class="hero-actions">
           <a href="https://cfx.re/join/4xlaj5" class="button primary" target="_blank" rel="noopener noreferrer">Connect to FiveM <span>↗</span></a>
           <a href="apply.html" class="button secondary">Submit Application <span>→</span></a>
@@ -42,7 +42,7 @@
       </div>
       <div class="network-card">
         <div class="network-head"><span class="pulse"></span><strong id="networkLabel">CHECKING SERVER</strong></div>
-        <img src="assets/blackstone-logo.png" alt="" />
+        <img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="" />
         <div class="network-stats">
           <div><small>STATUS</small><strong id="portalServerStatus">CHECKING</strong></div>
           <div><small>PLAYERS</small><strong id="portalPlayers">— / —</strong></div>
@@ -53,7 +53,7 @@
 
     <div class="setup-banner" id="setupBanner" hidden>
       <strong>PORTAL DATABASE SETUP REQUIRED</strong>
-      <p>Public information is currently using built-in starter content. Member accounts, applications and admin changes become active after the Vercel database environment variables are added.</p>
+      <p>Public information is currently using built-in starter content. Applications and administration changes become active after the Vercel database environment variables are added.</p>
     </div>
 
     <section class="hub-section" id="accountSection" hidden>
@@ -138,25 +138,6 @@
     <a href="login.html?next=admin">Staff Login</a>
   </footer>
 
-  <div class="modal" id="loginModal" aria-hidden="true">
-    <button type="button" class="modal-backdrop" data-close-login aria-label="Close sign in"></button>
-    <section class="login-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
-      <button type="button" class="modal-close" data-close-login aria-label="Close">×</button>
-      <img src="assets/blackstone-logo.png" alt="" />
-      <span>SECURE MEMBER ACCESS</span>
-      <h2 id="loginTitle">SIGN IN.</h2>
-      <a class="discord-login-button" id="discordSignIn" href="api/portal?action=discord-login" hidden><span class="discord-mark">D</span><span><strong>Continue with Discord</strong><small>Links your Discord member and role information</small></span></a>
-      <div class="login-divider" id="loginDivider" hidden><span>OR USE STAFF EMAIL</span></div>
-      <form id="loginForm">
-        <label><span>Email address</span><input type="email" name="email" autocomplete="username" required /></label>
-        <label><span>Password</span><input type="password" name="password" autocomplete="current-password" required /></label>
-        <p class="form-message" id="loginMessage"></p>
-        <button class="button primary" type="submit">Sign In</button>
-      </form>
-      <small>Members can sign in with Discord when enabled. Staff email accounts are created by Blackstone RP administration.</small>
-    </section>
-  </div>
-
-  <script src="portal.js?v=3"></script>
+  <script src="portal.js?v=4"></script>
 </body>
 </html>
