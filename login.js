@@ -5,8 +5,14 @@
   const requestedNext = params.get('next') === 'admin' ? 'admin' : 'portal';
   let csrfToken = '';
 
+  const loginError = params.get('loginError');
+  if (loginError) {
+    const message = $('#loginMessage');
+    if (message) message.textContent = loginError;
+  }
+
   $('#loginYear').textContent = new Date().getFullYear();
-  $('#discordLogin').href = `api/portal?action=discord-login&returnTo=${requestedNext}`;
+  $('#discordLogin').href = `/api/discord-login?returnTo=${requestedNext}`;
 
   async function api(action, options = {}) {
     const response = await fetch(`${API}?${new URLSearchParams({ action })}`, {

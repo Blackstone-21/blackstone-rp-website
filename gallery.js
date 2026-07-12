@@ -1,6 +1,6 @@
 (() => {
   const $ = (selector) => document.querySelector(selector);
-  const API_ENDPOINTS = ['api/discord-gallery', '/api/discord-gallery'];
+  const API_ENDPOINTS = ['/api/discord-gallery'];
   const allowedHost = /(^|\.)((cdn|media)\.discordapp\.(com|net)|discord\.com)$/i;
   let loading = false;
 
@@ -23,7 +23,7 @@
         const timeout = setTimeout(() => controller.abort(), 12000);
         const response = await fetch(endpoint, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: controller.signal });
         clearTimeout(timeout);
-        const payload = await response.json().catch(() => ({}));
+        const payload = await response.json().catch(() => ({ ok: false, message: `The gallery API returned a non-JSON response (${response.status}).` }));
         if (!response.ok || payload.ok === false) throw new Error(payload.message || `Gallery request failed (${response.status}).`);
         return payload;
       } catch (error) {
