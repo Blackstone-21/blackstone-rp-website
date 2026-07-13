@@ -76,7 +76,7 @@ function normaliseMessages(messages, imageLimit) {
 
 async function fetchDiscordMessages(token, channelId, requestLimit = 100) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 9000);
+  const timeout = setTimeout(() => controller.abort(), 7000);
 
   try {
     const response = await fetch(`${DISCORD_API_BASE}/channels/${encodeURIComponent(channelId)}/messages?limit=${requestLimit}`, {
@@ -84,7 +84,7 @@ async function fetchDiscordMessages(token, channelId, requestLimit = 100) {
       headers: {
         Accept: 'application/json',
         Authorization: `Bot ${token}`,
-        'User-Agent': 'BlackstoneRP-Website/3.0 (Discord Gallery)'
+        'User-Agent': 'BlackstoneRP-Website/4.7 (Discord Gallery)'
       },
       cache: 'no-store',
       signal: controller.signal

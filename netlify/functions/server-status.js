@@ -22,7 +22,7 @@ function firstNumber(...values) {
   return 0;
 }
 
-async function getJson(url, timeoutMs = 4500) {
+async function getJson(url, timeoutMs = 3200) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const startedAt = Date.now();
@@ -31,7 +31,7 @@ async function getJson(url, timeoutMs = 4500) {
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'BlackstoneRP-Website/4.2'
+        'User-Agent': 'BlackstoneRP-Website/4.7'
       },
       signal: controller.signal,
       cache: 'no-store'
@@ -139,8 +139,7 @@ async function checkStatus(proxyName) {
     source: proxyName,
     responseMs: 0,
     message: 'No live response was received. The server may be offline, restarting, or temporarily unavailable.',
-    checkedAt: new Date().toISOString(),
-    diagnostics: errors
+    checkedAt: new Date().toISOString()
   };
 }
 
@@ -171,7 +170,12 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Robots-Tag': 'noindex, nofollow, noarchive'
+      },
       body: JSON.stringify({ ok: false, message: 'Method not allowed.' })
     };
   }
@@ -184,7 +188,8 @@ exports.handler = async (event) => {
       'Cache-Control': 'public, max-age=10, stale-while-revalidate=60',
       'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=20, stale-while-revalidate=60',
       'Content-Type': 'application/json; charset=utf-8',
-      'X-Content-Type-Options': 'nosniff'
+      'X-Content-Type-Options': 'nosniff',
+      'X-Robots-Tag': 'noindex, nofollow, noarchive'
     },
     body: JSON.stringify(await getCachedStatus('NETLIFY STATUS PROXY'))
   };

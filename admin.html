@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="admin.css?v=4.6" />
+  <link rel="stylesheet" href="admin.css?v=4.7" />
 </head>
 <body>
   <div class="admin-ambient"></div>
@@ -84,7 +84,7 @@
             <div class="search-box"><span>⌕</span><input type="search" id="adminSearch" placeholder="Search records…" /></div>
             <div><button type="button" class="admin-button secondary" id="exportSection">Export</button><button type="button" class="admin-button primary" id="addRecord">Add New</button></div>
           </div>
-          <div class="data-card"><div class="table-wrap"><table><thead id="dataHead"></thead><tbody id="dataBody"></tbody></table></div><div class="empty-state" id="dataEmpty" hidden><img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="" /><strong>NO RECORDS FOUND</strong><p>Add a new record or change the search filter.</p></div></div>
+          <div class="data-card"><div class="table-wrap"><table><thead id="dataHead"></thead><tbody id="dataBody"></tbody></table></div><div class="table-pager" id="tablePager" hidden><button type="button" id="pagePrev">Previous</button><span id="pageSummary">Page 1</span><button type="button" id="pageNext">Next</button></div><div class="empty-state" id="dataEmpty" hidden><img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="" /><strong>NO RECORDS FOUND</strong><p>Add a new record or change the search filter.</p></div></div>
         </section>
 
         <section class="admin-view" id="discordView">
@@ -116,6 +116,6 @@
   </div>
 
   <div class="toast" id="adminToast"></div>
-  <script src="admin.js?v=5"></script>
+  <script src="admin.js?v=6"></script>
 </body>
 </html>

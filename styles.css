@@ -3290,3 +3290,16 @@ body.gallery-modal-open {
   .shop-card-footer { align-items: stretch; flex-direction: column; }
   .shop-action { width: 100%; }
 }
+
+.rules-nav{display:flex}
+
+/* Performance: skip layout/paint work for sections well below the viewport. */
+@supports (content-visibility: auto) {
+  main > section:not(.hero) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 900px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-glow { display: none !important; }
+}

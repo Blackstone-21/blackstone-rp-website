@@ -1,18 +1,12 @@
-/api/server-status
-  Cache-Control: public, max-age=10, s-maxage=20, stale-while-revalidate=60
-  Access-Control-Allow-Origin: *
-
-/.netlify/functions/server-status
-  Cache-Control: public, max-age=10, s-maxage=20, stale-while-revalidate=60
-  Access-Control-Allow-Origin: *
-
-/api/discord-gallery
-  Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300
-  Access-Control-Allow-Origin: *
-
-/.netlify/functions/discord-gallery
-  Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300
-  Access-Control-Allow-Origin: *
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-elem 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Permitted-Cross-Domain-Policies: none
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
@@ -22,3 +16,15 @@
 
 /*.js
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/admin.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/login.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/portal.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive

@@ -79,14 +79,14 @@ function safeErrorMessage(error) {
 
 async function fetchDiscordMessages(token, channelId) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 9000);
+  const timeout = setTimeout(() => controller.abort(), 7000);
 
   try {
     const response = await fetch(`${DISCORD_API_BASE}/channels/${encodeURIComponent(channelId)}/messages?limit=100`, {
       headers: {
         Accept: 'application/json',
         Authorization: `Bot ${token}`,
-        'User-Agent': 'BlackstoneRP-Website/3.0 (Discord Gallery)'
+        'User-Agent': 'BlackstoneRP-Website/4.7 (Discord Gallery)'
       },
       signal: controller.signal
     });
@@ -172,7 +172,12 @@ export async function onRequest(context) {
   if (context.request.method !== 'GET') {
     return new Response(JSON.stringify({ ok: false, message: 'Method not allowed.' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' }
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Robots-Tag': 'noindex, nofollow, noarchive'
+      }
     });
   }
 
@@ -185,7 +190,9 @@ export async function onRequest(context) {
       'Cache-Control': result.cacheable
         ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
         : 'no-store, max-age=0',
-      'Content-Type': 'application/json; charset=utf-8'
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Robots-Tag': 'noindex, nofollow, noarchive'
     }
   });
 }

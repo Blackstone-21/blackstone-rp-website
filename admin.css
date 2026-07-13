@@ -114,3 +114,5 @@
   .login-panel .secure-label{margin-top:22px}
   .login-panel h1{font-size:clamp(3rem,8vh,4.5rem)}
 }
+
+.table-pager{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 18px;border-top:1px solid var(--line,#242629);font-size:12px;color:#9ca3af}.table-pager button{border:1px solid #34363a;background:#111;color:#fff;padding:8px 12px;cursor:pointer}.table-pager button:disabled{opacity:.4;cursor:not-allowed}@media(max-width:640px){.table-pager{justify-content:center;flex-wrap:wrap}}

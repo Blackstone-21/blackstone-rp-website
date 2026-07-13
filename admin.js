@@ -9,6 +9,11 @@
   let currentItems = [];
   let filteredItems = [];
   let referenceData = { roles: [], members: [], departments: [] };
+  let refreshPromise = null;
+  let loadSequence = 0;
+  let currentPage = 1;
+  const PAGE_SIZE = 100;
+  const REQUEST_TIMEOUT_MS = 12000;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -129,21 +134,39 @@
     }
   };
 
+  async function runFetch(url, options) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try { return await fetch(url, { ...options, signal: controller.signal }); }
+    catch (error) {
+      if (error?.name === 'AbortError') throw new Error('The request timed out. Please try again.');
+      throw error;
+    } finally { window.clearTimeout(timeout); }
+  }
+
+  async function refreshSession() {
+    if (!refreshPromise) {
+      refreshPromise = api('refresh', { method: 'POST' }, false)
+        .finally(() => { refreshPromise = null; });
+    }
+    return refreshPromise;
+  }
+
   async function api(action, options = {}, retry = true) {
     const query = new URLSearchParams({ action, ...(options.query || {}) });
-    const response = await fetch(`${API}?${query}`, {
+    const response = await runFetch(`${API}?${query}`, {
       method: options.method || 'GET',
       headers: { Accept:'application/json', ...(options.body ? {'Content-Type':'application/json'} : {}), ...(csrfToken ? {'X-CSRF-Token':csrfToken} : {}) },
       body: options.body ? JSON.stringify(options.body) : undefined,
       credentials:'same-origin', cache:'no-store'
     });
     const payload = await response.json().catch(() => ({ok:false,message:'Invalid server response.'}));
-    if (response.status === 401 && retry && action !== 'login' && action !== 'refresh') {
+    if (response.status === 401 && retry && !['login','refresh'].includes(action)) {
       try {
-        const refreshed = await api('refresh', {method:'POST'}, false);
+        const refreshed = await refreshSession();
         if (refreshed.csrfToken) setCsrf(refreshed.csrfToken);
         return api(action, options, false);
-      } catch {}
+      } catch { leaveApp(); }
     }
     if (!response.ok || payload.ok === false) {
       const error = new Error(payload.message || `Request failed (${response.status}).`);
@@ -167,12 +190,32 @@
   }
   function download(name,data){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 
-  async function checkSetup(){
-    try{const data=await api('setup-status');const state=$('#setupState');const discordButton=$('.discord-admin-login');const divider=$('.admin-login-divider');if(discordButton)discordButton.hidden=!data.discordOAuthConfigured;if(divider)divider.hidden=!data.discordOAuthConfigured;
-      if(data.databaseConfigured&&data.authConfigured&&data.bootstrapAdminConfigured){state.className='setup-state ready';state.innerHTML='<strong>VERCEL BACKEND READY</strong><p>Database, secure authentication and bootstrap administrator are configured.</p>'}
-      else{state.className='setup-state error';const missing=[];if(!data.databaseConfigured)missing.push('Upstash Redis');if(!data.authConfigured)missing.push('AUTH_SECRET');if(!data.bootstrapAdminConfigured)missing.push('ADMIN_EMAIL / ADMIN_PASSWORD');state.innerHTML=`<strong>SETUP REQUIRED</strong><p>Missing: ${missing.join(', ')}. Follow PORTAL-ADMIN-SETUP.md, then redeploy.</p>`}
-    }catch(error){const discordButton=$('.discord-admin-login');const divider=$('.admin-login-divider');if(discordButton)discordButton.hidden=true;if(divider)divider.hidden=true;$('#setupState').className='setup-state error';$('#setupState').innerHTML=`<strong>SETUP CHECK FAILED</strong><p>${error.message}</p>`}
+  function renderSetupState(className, heading, message) {
+    const state = $('#setupState');
+    state.className = `setup-state ${className}`;
+    state.replaceChildren();
+    const strong = document.createElement('strong'); strong.textContent = heading;
+    const paragraph = document.createElement('p'); paragraph.textContent = message;
+    state.append(strong, paragraph);
   }
+
+  async function checkSetup(){
+    try {
+      const data=await api('setup-status');
+      const discordButton=$('.discord-admin-login');const divider=$('.admin-login-divider');
+      if(discordButton)discordButton.hidden=!data.discordOAuthConfigured;if(divider)divider.hidden=!data.discordOAuthConfigured;
+      if(data.databaseConfigured&&data.authConfigured&&data.bootstrapAdminConfigured&&data.siteUrlConfigured){
+        renderSetupState('ready','VERCEL BACKEND READY','Database, secure authentication, site URL and bootstrap administrator are configured.');
+      } else {
+        const missing=[];if(!data.databaseConfigured)missing.push('Upstash Redis');if(!data.authConfigured)missing.push('AUTH_SECRET');if(!data.bootstrapAdminConfigured)missing.push('ADMIN_EMAIL / ADMIN_PASSWORD');if(!data.siteUrlConfigured)missing.push('PUBLIC_SITE_URL');
+        renderSetupState('error','SETUP REQUIRED',`Missing: ${missing.join(', ')}. Follow PORTAL-ADMIN-SETUP.md, then redeploy.`);
+      }
+    } catch(error) {
+      const discordButton=$('.discord-admin-login');const divider=$('.admin-login-divider');if(discordButton)discordButton.hidden=true;if(divider)divider.hidden=true;
+      renderSetupState('error','SETUP CHECK FAILED',error.message);
+    }
+  }
+
 
   function configureNavigation(){
     $$('#adminNav button').forEach(btn=>{const permission=btn.dataset.permission;btn.hidden=Boolean(permission&&!hasPermission(permission));});
@@ -200,11 +243,12 @@
     if(section!=='dashboard'&&section!=='discord'&&section!=='settings'&&!sections[section])return;
     const permission=section==='dashboard'?'dashboard.view':section==='discord'?'discord.sync':section==='settings'?'settings.manage':sections[section].permission;
     if(permission&&!hasPermission(permission))return toast('Permission denied');
-    currentSection=section;$$('#adminNav button').forEach(btn=>btn.classList.toggle('active',btn.dataset.section===section));$('#adminSidebar').classList.remove('open');
+    const sequence=++loadSequence;
+    currentSection=section;currentPage=1;$$('#adminNav button').forEach(btn=>btn.classList.toggle('active',btn.dataset.section===section));$('#adminSidebar').classList.remove('open');
     if(section==='dashboard'){activateView('#dashboardView');$('#sectionEyebrow').textContent='ADMINISTRATION OVERVIEW';$('#adminSectionTitle').textContent='Dashboard';await loadDashboard();return}
     if(section==='discord'){activateView('#discordView');$('#sectionEyebrow').textContent='DISCORD INTEGRATION';$('#adminSectionTitle').textContent='Discord Sync';return}
     if(section==='settings'){activateView('#settingsView');$('#sectionEyebrow').textContent='SYSTEM CONFIGURATION';$('#adminSectionTitle').textContent='Settings';await loadSettings();return}
-    activateView('#dataView');const config=sections[section];$('#sectionEyebrow').textContent=config.eyebrow;$('#adminSectionTitle').textContent=config.title;$('#addRecord').hidden=Boolean(config.addDisabled);$('#exportSection').hidden=false;$('#adminSearch').value='';await loadEntity(section,force);
+    activateView('#dataView');const config=sections[section];$('#sectionEyebrow').textContent=config.eyebrow;$('#adminSectionTitle').textContent=config.title;$('#addRecord').hidden=Boolean(config.addDisabled);$('#exportSection').hidden=false;$('#adminSearch').value='';await loadEntity(section,sequence,force);
   }
 
   async function loadDashboard(){
@@ -230,18 +274,30 @@
     await Promise.all(tasks);
   }
 
-  async function loadEntity(entity){
-    try{const data=await api('admin-list',{query:{entity}});currentItems=Array.isArray(data.items)?data.items:[];filteredItems=[...currentItems];if(['users','members','roles'].includes(entity))await loadReferences();renderTable()}catch(error){currentItems=[];filteredItems=[];renderTable();toast(error.message)}
+  async function loadEntity(entity, sequence = loadSequence){
+    try {
+      const data=await api('admin-list',{query:{entity}});
+      if(sequence!==loadSequence||entity!==currentSection)return;
+      currentItems=Array.isArray(data.items)?data.items:[];
+      currentItems.forEach(item=>{Object.defineProperty(item,'__search',{value:JSON.stringify(item).toLowerCase(),enumerable:false,configurable:true});});
+      filteredItems=[...currentItems];currentPage=1;
+      if(['users','members','roles'].includes(entity))await loadReferences();
+      if(sequence!==loadSequence||entity!==currentSection)return;
+      renderTable();
+    }catch(error){if(sequence!==loadSequence)return;currentItems=[];filteredItems=[];renderTable();toast(error.message)}
   }
 
   function renderTable(){
     const config=sections[currentSection];const head=$('#dataHead');const body=$('#dataBody');head.innerHTML='';body.innerHTML='';const row=document.createElement('tr');config.columns.forEach(([,label])=>{const th=document.createElement('th');th.textContent=label;row.append(th)});const actionTh=document.createElement('th');actionTh.textContent='Actions';row.append(actionTh);head.append(row);
-    filteredItems.forEach(item=>{const tr=document.createElement('tr');config.columns.forEach(([key])=>{const td=document.createElement('td');const value=formatValue(key,item[key]);if(key===config.columns[0][0]){const strong=document.createElement('strong');strong.textContent=value;td.append(strong)}else if(['status','published','active','open','pinned','soldOut','featured','roleMode','departmentMode'].includes(key)){const badge=document.createElement('span');badge.className='status-badge';badge.textContent=value;td.append(badge)}else{td.textContent=value}tr.append(td)});const actions=document.createElement('td');actions.className='table-actions';if(!config.editDisabled){const edit=document.createElement('button');edit.textContent=currentSection==='applications'?'Review':'Edit';edit.addEventListener('click',()=>openEditor(item));actions.append(edit)}if(!config.deleteDisabled){const del=document.createElement('button');del.className='delete';del.textContent='Delete';del.addEventListener('click',()=>deleteRecord(item));actions.append(del)}tr.append(actions);body.append(tr)});
-    $('#dataEmpty').hidden=filteredItems.length>0;$('.table-wrap').hidden=filteredItems.length===0;
+    const pageCount=Math.max(1,Math.ceil(filteredItems.length/PAGE_SIZE));currentPage=Math.min(currentPage,pageCount);const pageItems=filteredItems.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
+    pageItems.forEach(item=>{const tr=document.createElement('tr');config.columns.forEach(([key])=>{const td=document.createElement('td');const value=formatValue(key,item[key]);if(key===config.columns[0][0]){const strong=document.createElement('strong');strong.textContent=value;td.append(strong)}else if(['status','published','active','open','pinned','soldOut','featured','roleMode','departmentMode'].includes(key)){const badge=document.createElement('span');badge.className='status-badge';badge.textContent=value;td.append(badge)}else{td.textContent=value}tr.append(td)});const actions=document.createElement('td');actions.className='table-actions';if(!config.editDisabled){const edit=document.createElement('button');edit.textContent=currentSection==='applications'?'Review':'Edit';edit.addEventListener('click',()=>openEditor(item));actions.append(edit)}if(!config.deleteDisabled){const del=document.createElement('button');del.className='delete';del.textContent='Delete';del.addEventListener('click',()=>deleteRecord(item));actions.append(del)}tr.append(actions);body.append(tr)});
+    $('#dataEmpty').hidden=filteredItems.length>0;$('.table-wrap').hidden=filteredItems.length===0;const pager=$('#tablePager');pager.hidden=filteredItems.length<=PAGE_SIZE;$('#pageSummary').textContent=`Page ${currentPage} of ${pageCount} · ${filteredItems.length} records`;$('#pagePrev').disabled=currentPage<=1;$('#pageNext').disabled=currentPage>=pageCount;
   }
 
   let searchTimer=0;
-  $('#adminSearch').addEventListener('input',event=>{const value=event.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{const query=value.toLowerCase().trim();filteredItems=query?currentItems.filter(item=>JSON.stringify(item).toLowerCase().includes(query)):[...currentItems];renderTable()},140)});
+  $('#adminSearch').addEventListener('input',event=>{const value=event.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{const query=value.toLowerCase().trim();filteredItems=query?currentItems.filter(item=>(item.__search||'').includes(query)):[...currentItems];currentPage=1;renderTable()},140)});
+  $('#pagePrev').addEventListener('click',()=>{if(currentPage>1){currentPage-=1;renderTable()}});
+  $('#pageNext').addEventListener('click',()=>{if(currentPage*PAGE_SIZE<filteredItems.length){currentPage+=1;renderTable()}});
   $('#addRecord').addEventListener('click',()=>openEditor(null));
   $('#exportSection').addEventListener('click',()=>download(`blackstone-${currentSection}-${new Date().toISOString().slice(0,10)}.json`,currentItems));
 
@@ -258,12 +314,12 @@
   }
 
   async function openEditor(item){
-    const config=sections[currentSection];if(['users','members','roles'].includes(currentSection))await loadReferences();$('#editorEyebrow').textContent=item?'EDIT RECORD':'CREATE RECORD';$('#editorTitle').textContent=item?(item.title||item.displayName||item.name||item.discord||config.title):`New ${config.title.replace(/s$/,'')}`;const fields=$('#editorFields');fields.innerHTML='';config.fields.forEach(field=>fields.append(fieldElement(field,item)));const form=$('#editorForm');form.dataset.id=item?.id||'';$('#editorMessage').textContent='';$('#editorModal').classList.add('open');$('#editorModal').setAttribute('aria-hidden','false')
+    const config=sections[currentSection];if(['users','members','roles'].includes(currentSection))await loadReferences();$('#editorEyebrow').textContent=item?'EDIT RECORD':'CREATE RECORD';$('#editorTitle').textContent=item?(item.title||item.displayName||item.name||item.discord||config.title):`New ${config.title.replace(/s$/,'')}`;const fields=$('#editorFields');fields.innerHTML='';config.fields.forEach(field=>fields.append(fieldElement(field,item)));const form=$('#editorForm');form.dataset.id=item?.id||'';form.dataset.originalId=item?.id||'';$('#editorMessage').textContent='';$('#editorModal').classList.add('open');$('#editorModal').setAttribute('aria-hidden','false')
   }
   function closeEditor(){$('#editorModal').classList.remove('open');$('#editorModal').setAttribute('aria-hidden','true')}
   $$('[data-close-editor]').forEach(btn=>btn.addEventListener('click',closeEditor));
 
-  $('#editorForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;if(!form.reportValidity())return;const data=Object.fromEntries(new FormData(form));data.id=form.dataset.id||undefined;const config=sections[currentSection];config.fields.forEach(field=>{if(field.type==='checkbox')data[field.name]=form.elements[field.name]?.checked||false;if(field.type==='permissions')data.permissions=[...form.querySelectorAll('input[name="permissions"]:checked')].map(input=>input.value);if(field.type==='datetime-local'&&data[field.name])data[field.name]=new Date(data[field.name]).toISOString()});const button=form.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Saving…';try{const result=await api('admin-save',{method:'POST',body:{entity:currentSection,item:data}});closeEditor();toast(result.warning||'Changes saved');await loadEntity(currentSection);if(currentSection==='roles')configureNavigation()}catch(error){$('#editorMessage').textContent=error.message}finally{button.disabled=false;button.textContent='Save Changes'}});
+  $('#editorForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;if(!form.reportValidity())return;const data=Object.fromEntries(new FormData(form));const originalId=form.dataset.originalId||'';if(currentSection!=='roles'){data.id=originalId||undefined}else if(!data.id){delete data.id}const config=sections[currentSection];config.fields.forEach(field=>{if(field.type==='checkbox')data[field.name]=form.elements[field.name]?.checked||false;if(field.type==='permissions')data.permissions=[...form.querySelectorAll('input[name="permissions"]:checked')].map(input=>input.value);if(field.type==='datetime-local'&&data[field.name])data[field.name]=new Date(data[field.name]).toISOString()});const button=form.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Saving…';try{const result=await api('admin-save',{method:'POST',body:{entity:currentSection,item:data,originalId:originalId||undefined}});closeEditor();toast(result.warning||'Changes saved');await loadEntity(currentSection);if(currentSection==='roles')configureNavigation()}catch(error){$('#editorMessage').textContent=error.message}finally{button.disabled=false;button.textContent='Save Changes'}});
 
   async function deleteRecord(item){if(!confirm(`Delete ${item.title||item.displayName||item.name||item.discord||'this record'}? This cannot be undone.`))return;try{const result=await api('admin-delete',{method:'DELETE',body:{entity:currentSection,id:item.id}});toast(result.warning||'Record deleted');await loadEntity(currentSection)}catch(error){toast(error.message)}}
 
@@ -271,7 +327,7 @@
 
   async function loadSettings(){try{const data=await api('admin-list',{query:{entity:'settings'}});const settings=data.items||{};const form=$('#communitySettingsForm');Object.entries(settings).forEach(([key,value])=>{const control=form.elements[key];if(!control)return;if(control.type==='checkbox')control.checked=Boolean(value);else control.value=value??''})}catch(error){toast(error.message)}}
   $('#communitySettingsForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;const item=Object.fromEntries(new FormData(form));item.applicationsOpen=form.elements.applicationsOpen.checked;try{await api('admin-save',{method:'POST',body:{entity:'settings',item}});toast('Settings saved')}catch(error){toast(error.message)}});
-  $('#passwordForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;const data=Object.fromEntries(new FormData(form));const message=$('#passwordMessage');if(data.newPassword!==data.confirmPassword){message.textContent='New passwords do not match.';return}try{await api('change-password',{method:'POST',body:{currentPassword:data.currentPassword,newPassword:data.newPassword}});message.textContent='Password updated successfully.';form.reset()}catch(error){message.textContent=error.message}});
+  $('#passwordForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;const data=Object.fromEntries(new FormData(form));const message=$('#passwordMessage');if(data.newPassword!==data.confirmPassword){message.textContent='New passwords do not match.';return}try{const result=await api('change-password',{method:'POST',body:{currentPassword:data.currentPassword,newPassword:data.newPassword}});form.reset();if(result.reauthenticate){leaveApp();$('#adminLoginMessage').textContent='Password updated. Sign in again with your new password.'}else{message.textContent='Password updated successfully.'}}catch(error){message.textContent=error.message}});
   $('#exportAll').addEventListener('click',async()=>{try{const data=await api('admin-export');download(`blackstone-admin-export-${new Date().toISOString().slice(0,10)}.json`,data);toast('Export downloaded')}catch(error){toast(error.message)}});
 
   checkSetup();restoreSession();

@@ -22,7 +22,7 @@ function firstNumber(...values) {
   return 0;
 }
 
-async function getJson(url, timeoutMs = 4500) {
+async function getJson(url, timeoutMs = 3200) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const startedAt = Date.now();
@@ -31,7 +31,7 @@ async function getJson(url, timeoutMs = 4500) {
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'BlackstoneRP-Website/4.2'
+        'User-Agent': 'BlackstoneRP-Website/4.7'
       },
       signal: controller.signal,
       cache: 'no-store'
@@ -139,8 +139,7 @@ async function checkStatus(proxyName) {
     source: proxyName,
     responseMs: 0,
     message: 'No live response was received. The server may be offline, restarting, or temporarily unavailable.',
-    checkedAt: new Date().toISOString(),
-    diagnostics: errors
+    checkedAt: new Date().toISOString()
   };
 }
 
@@ -163,6 +162,9 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, max-age=10, s-maxage=20, stale-while-revalidate=60');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ ok: false, message: 'Method not allowed.' });
   return res.status(200).json(await getCachedStatus('WEBSITE STATUS PROXY'));

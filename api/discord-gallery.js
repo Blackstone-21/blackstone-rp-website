@@ -9,6 +9,9 @@ function json(res, status, body, cacheControl = 'no-store, max-age=0') {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', cacheControl);
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   return res.end(JSON.stringify(body));
 }
 
@@ -120,13 +123,13 @@ module.exports = async function handler(req, res) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 7000);
   try {
     const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages?limit=100`, {
       headers: {
         Accept: 'application/json',
         Authorization: `Bot ${token}`,
-        'User-Agent': 'BlackstoneRP-Website/4.0 (Discord Gallery)'
+        'User-Agent': 'BlackstoneRP-Website/4.7 (Discord Gallery)'
       },
       cache: 'no-store',
       signal: controller.signal
@@ -166,7 +169,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       configured: true,
       message: timedOut ? 'The Discord gallery request timed out.' : 'The Discord gallery function failed. Check the Vercel Function logs.',
-      errorCode: error?.code || (timedOut ? 'DISCORD_TIMEOUT' : 'DISCORD_GALLERY_ERROR'),
+      errorCode: timedOut ? 'DISCORD_TIMEOUT' : 'DISCORD_GALLERY_ERROR',
       fetchedAt: new Date().toISOString()
     });
   } finally {

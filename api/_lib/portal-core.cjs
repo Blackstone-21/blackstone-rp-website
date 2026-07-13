@@ -7,6 +7,12 @@ const OAUTH_STATE_COOKIE = 'bsrp_oauth_state';
 const ACCESS_TTL = 15 * 60;
 const REFRESH_TTL = 7 * 24 * 60 * 60;
 const OAUTH_STATE_TTL = 10 * 60;
+const MAX_BODY_BYTES = 128 * 1024;
+const MAX_PASSWORD_LENGTH = 256;
+const REDIS_TIMEOUT_MS = 6000;
+const DISCORD_TIMEOUT_MS = 8000;
+const SEED_CACHE_TTL_MS = 5 * 60 * 1000;
+const PUBLIC_CACHE_TTL_MS = 10 * 1000;
 const ALL_PERMISSIONS = [
   'dashboard.view',
   'announcements.manage',
@@ -38,6 +44,8 @@ const ENTITY_PERMISSIONS = {
 
 const PUBLIC_ENTITIES = new Set(['announcements', 'departments', 'events', 'shop', 'images']);
 const ADMIN_ENTITIES = new Set(Object.keys(ENTITY_PERMISSIONS));
+let seedCache = { expiresAt: 0, promise: null };
+let publicPayloadCache = { expiresAt: 0, value: null, promise: null };
 
 function nowIso() {
   return new Date().toISOString();
@@ -50,8 +58,54 @@ function randomId(prefix = 'id') {
 function cleanText(value, max = 4000) {
   return String(value ?? '')
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[\u202A-\u202E\u2066-\u2069]/g, '')
     .trim()
     .slice(0, max);
+}
+
+function httpError(status, message, code = 'REQUEST_ERROR') {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  return error;
+}
+
+function badRequest(message, code = 'INVALID_INPUT') {
+  return httpError(400, message, code);
+}
+
+function safeUrl(value, options = {}) {
+  const text = cleanText(value, options.max || 2000);
+  if (!text) return '';
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    throw badRequest(options.message || 'A valid URL is required.');
+  }
+  const allowedProtocols = options.protocols || ['https:'];
+  if (!allowedProtocols.includes(url.protocol) || url.username || url.password) {
+    throw badRequest(options.message || 'Only secure HTTPS URLs are allowed.');
+  }
+  if (options.hosts && !options.hosts.includes(url.hostname.toLowerCase())) {
+    throw badRequest(options.message || 'This URL host is not allowed.');
+  }
+  return url.href;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function invalidatePublicCache() {
+  publicPayloadCache.expiresAt = 0;
+  publicPayloadCache.value = null;
 }
 
 function cleanEmail(value) {
@@ -111,7 +165,7 @@ async function discordAnnouncementRequest(env, path, options = {}) {
     error.code = 'DISCORD_ANNOUNCEMENTS_NOT_CONFIGURED';
     throw error;
   }
-  const response = await fetch(`${DISCORD_API_BASE}${path}`, {
+  const response = await fetchWithTimeout(`${DISCORD_API_BASE}${path}`, {
     method: options.method || 'GET',
     headers: {
       Authorization: `Bot ${token}`,
@@ -119,7 +173,7 @@ async function discordAnnouncementRequest(env, path, options = {}) {
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
     cache: 'no-store'
-  });
+  }, DISCORD_TIMEOUT_MS);
   if (response.status === 204) return null;
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -324,7 +378,7 @@ async function redisCommand(env, command) {
     throw error;
   }
 
-  const response = await fetch(config.url, {
+  const response = await fetchWithTimeout(config.url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.token}`,
@@ -332,7 +386,7 @@ async function redisCommand(env, command) {
     },
     body: JSON.stringify(command),
     cache: 'no-store'
-  });
+  }, REDIS_TIMEOUT_MS);
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.error) {
@@ -351,7 +405,7 @@ async function redisPipeline(env, commands) {
     throw error;
   }
 
-  const response = await fetch(`${config.url}/pipeline`, {
+  const response = await fetchWithTimeout(`${config.url}/pipeline`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.token}`,
@@ -359,7 +413,7 @@ async function redisPipeline(env, commands) {
     },
     body: JSON.stringify(commands),
     cache: 'no-store'
-  });
+  }, REDIS_TIMEOUT_MS);
   const payload = await response.json().catch(() => []);
   if (!response.ok || !Array.isArray(payload)) {
     const error = new Error(`Database pipeline failed (${response.status}).`);
@@ -451,8 +505,12 @@ function defaultData() {
 }
 
 async function hashPassword(password, salt = crypto.randomBytes(24).toString('hex')) {
+  const input = String(password || '');
+  if (input.length < 10 || input.length > MAX_PASSWORD_LENGTH) {
+    throw badRequest(`Passwords must be between 10 and ${MAX_PASSWORD_LENGTH} characters.`, 'INVALID_PASSWORD');
+  }
   const digest = await new Promise((resolve, reject) => {
-    crypto.pbkdf2(password, salt, 210000, 64, 'sha512', (error, derivedKey) => {
+    crypto.pbkdf2(input, salt, 210000, 64, 'sha512', (error, derivedKey) => {
       if (error) reject(error);
       else resolve(derivedKey.toString('hex'));
     });
@@ -464,9 +522,12 @@ async function verifyPassword(password, stored) {
   const [algorithm, iterationsText, salt, digest] = String(stored || '').split('$');
   if (algorithm !== 'pbkdf2_sha512' || !salt || !digest) return false;
   const iterations = Number(iterationsText);
-  if (!Number.isFinite(iterations) || iterations < 100000) return false;
+  if (!Number.isFinite(iterations) || iterations < 100000 || iterations > 1000000) return false;
+  if (!/^[a-f0-9]{48}$/i.test(salt) || !/^[a-f0-9]{128}$/i.test(digest)) return false;
+  const input = String(password || '');
+  if (input.length > MAX_PASSWORD_LENGTH) return false;
   const calculated = await new Promise((resolve, reject) => {
-    crypto.pbkdf2(password, salt, iterations, 64, 'sha512', (error, derivedKey) => {
+    crypto.pbkdf2(input, salt, iterations, 64, 'sha512', (error, derivedKey) => {
       if (error) reject(error);
       else resolve(derivedKey);
     });
@@ -499,6 +560,12 @@ function signToken(payload, env) {
 function verifyToken(token, env, expectedType) {
   const [header, body, signature] = String(token || '').split('.');
   if (!header || !body || !signature) return null;
+  try {
+    const parsedHeader = JSON.parse(Buffer.from(header, 'base64url').toString('utf8'));
+    if (parsedHeader?.alg !== 'HS256' || parsedHeader?.typ !== 'JWT') return null;
+  } catch {
+    return null;
+  }
   const secret = authSecret(env);
   if (secret.length < 32) return null;
   const expected = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest();
@@ -515,7 +582,9 @@ function verifyToken(token, env, expectedType) {
   } catch {
     return null;
   }
-  if (payload.exp && Math.floor(Date.now() / 1000) >= payload.exp) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(Number(payload.iat)) || !Number.isFinite(Number(payload.exp))) return null;
+  if (now >= Number(payload.exp) || Number(payload.iat) > now + 60) return null;
   if (expectedType && payload.type !== expectedType) return null;
   return payload;
 }
@@ -528,17 +597,20 @@ function parseCookies(req) {
     if (index < 0) continue;
     const key = item.slice(0, index).trim();
     const value = item.slice(index + 1).trim();
-    if (key) cookies[key] = decodeURIComponent(value);
+    if (!key) continue;
+    try { cookies[key] = decodeURIComponent(value); } catch { /* Ignore malformed cookie values. */ }
   }
   return cookies;
 }
 
 function cookieString(name, value, maxAge, req, httpOnly = true, sameSite = 'Strict') {
-  const secure = String(req.headers?.['x-forwarded-proto'] || '').includes('https') || process.env.NODE_ENV === 'production';
+  const forwardedProto = cleanText(String(req.headers?.['x-forwarded-proto'] || '').split(',')[0], 20);
+  const secure = forwardedProto === 'https' || process.env.NODE_ENV === 'production';
   const safeSameSite = ['Strict', 'Lax', 'None'].includes(sameSite) ? sameSite : 'Strict';
   const parts = [`${name}=${encodeURIComponent(value)}`, 'Path=/', `Max-Age=${Math.max(0, maxAge)}`, `SameSite=${safeSameSite}`];
   if (httpOnly) parts.push('HttpOnly');
   if (secure) parts.push('Secure');
+  parts.push('Priority=High');
   return parts.join('; ');
 }
 
@@ -547,7 +619,22 @@ function clearCookie(name, req, sameSite = 'Strict') {
 }
 
 function clientIp(req) {
-  return cleanText(String(req.headers?.['x-forwarded-for'] || req.headers?.['x-real-ip'] || 'unknown').split(',')[0], 128);
+  const value = String(req.headers?.['x-vercel-forwarded-for'] || req.headers?.['x-forwarded-for'] || req.headers?.['x-real-ip'] || 'unknown');
+  return cleanText(value.split(',')[0], 128) || 'unknown';
+}
+
+function clientFingerprint(req) {
+  // OAuth already requires a one-time HttpOnly state cookie. Binding it to
+  // stable browser headers avoids false failures when mobile/public IPs change.
+  const agent = cleanText(req.headers?.['user-agent'] || '', 300);
+  const language = cleanText(req.headers?.['accept-language'] || '', 120);
+  return crypto.createHash('sha256').update(`${agent}|${language}`).digest('hex').slice(0, 32);
+}
+
+function sessionFingerprint(req) {
+  const agent = cleanText(req.headers?.['user-agent'] || '', 300);
+  const language = cleanText(req.headers?.['accept-language'] || '', 120);
+  return crypto.createHash('sha256').update(`${agent}|${language}`).digest('hex').slice(0, 32);
 }
 
 async function rateLimit(env, bucket, limit, windowSeconds) {
@@ -693,8 +780,7 @@ async function runShopMigration(env) {
   return true;
 }
 
-async function ensureSeeded(env) {
-  if (!isRedisConfigured(env)) return { configured: false, seeded: false };
+async function ensureSeededInternal(env) {
   const seeded = await redisCommand(env, ['GET', `${PREFIX}seeded`]);
   if (seeded === '1') {
     await ensureBootstrapAdmin(env);
@@ -725,6 +811,22 @@ async function ensureSeeded(env) {
   await runFireDepartmentMigration(env);
   await runShopMigration(env);
   return { configured: true, seeded: true };
+}
+
+async function ensureSeeded(env, options = {}) {
+  if (!isRedisConfigured(env)) return { configured: false, seeded: false };
+  const now = Date.now();
+  if (!options.force && seedCache.expiresAt > now) return { configured: true, seeded: true };
+  if (seedCache.promise) return seedCache.promise;
+  seedCache.promise = ensureSeededInternal(env)
+    .then((result) => {
+      seedCache.expiresAt = Date.now() + SEED_CACHE_TTL_MS;
+      return result;
+    })
+    .finally(() => {
+      seedCache.promise = null;
+    });
+  return seedCache.promise;
 }
 
 async function getAllData(env) {
@@ -764,6 +866,7 @@ function publicUser(user, roles) {
     discordUsername: user.discordUsername || '',
     roleId: role.id,
     roleName: role.name,
+    rolePriority: Number(role.priority || 0),
     permissions: Array.isArray(role.permissions) ? role.permissions : [],
     memberId: user.memberId || '',
     active: Boolean(user.active)
@@ -773,20 +876,40 @@ function publicUser(user, roles) {
 async function authenticate(req, env) {
   const cookies = parseCookies(req);
   const payload = verifyToken(cookies[ACCESS_COOKIE], env, 'access');
-  if (!payload?.sub) return null;
-  const [users, roles] = await Promise.all([getJson(env, 'users', []), getJson(env, 'roles', defaultData().roles)]);
+  if (!payload?.sub || !payload?.sid) return null;
+  const keys = [`${PREFIX}users`, `${PREFIX}roles`, `${PREFIX}session:${payload.sid}`];
+  const values = await redisCommand(env, ['MGET', ...keys]);
+  const defaults = defaultData();
+  let users = [];
+  let roles = defaults.roles;
+  let session = null;
+  try { users = values?.[0] ? JSON.parse(values[0]) : []; } catch { users = []; }
+  try { roles = values?.[1] ? JSON.parse(values[1]) : defaults.roles; } catch { roles = defaults.roles; }
+  try { session = values?.[2] ? JSON.parse(values[2]) : null; } catch { session = null; }
+  if (!session || session.userId !== payload.sub || session.csrf !== payload.csrf) return null;
   const user = users.find((candidate) => candidate.id === payload.sub && candidate.active !== false);
   if (!user) return null;
   const result = publicUser(user, roles);
   result.csrf = payload.csrf || '';
+  result.sessionId = payload.sid;
   return result;
 }
 
-function requireCsrf(req, user) {
+function allowedRequestOrigin(req, env) {
+  const origin = cleanText(req.headers?.origin || '', 1000);
+  if (!origin) return true;
+  const expected = requestOrigin(req, env);
+  return Boolean(expected && origin === expected);
+}
+
+function requireCsrf(req, user, env) {
   const method = String(req.method || 'GET').toUpperCase();
   if (['GET', 'HEAD', 'OPTIONS'].includes(method)) return true;
+  if (!allowedRequestOrigin(req, env)) return false;
   const token = cleanText(req.headers?.['x-csrf-token'] || '', 256);
-  return Boolean(token && user?.csrf && token === user.csrf);
+  const expected = Buffer.from(String(user?.csrf || ''));
+  const received = Buffer.from(token);
+  return Boolean(token && expected.length === received.length && crypto.timingSafeEqual(expected, received));
 }
 
 function hasPermission(user, permission) {
@@ -797,9 +920,14 @@ async function issueSession(req, res, env, user, additionalCookies = []) {
   const now = Math.floor(Date.now() / 1000);
   const sessionId = randomId('session');
   const csrf = crypto.randomBytes(24).toString('base64url');
-  const access = signToken({ sub: user.id, type: 'access', iat: now, exp: now + ACCESS_TTL, csrf }, env);
+  const access = signToken({ sub: user.id, type: 'access', sid: sessionId, iat: now, exp: now + ACCESS_TTL, csrf }, env);
   const refresh = signToken({ sub: user.id, type: 'refresh', sid: sessionId, iat: now, exp: now + REFRESH_TTL }, env);
-  await redisCommand(env, ['SETEX', `${PREFIX}session:${sessionId}`, REFRESH_TTL, JSON.stringify({ userId: user.id, csrf, createdAt: nowIso() })]);
+  const indexKey = `${PREFIX}user-sessions:${user.id}`;
+  await redisPipeline(env, [
+    ['SETEX', `${PREFIX}session:${sessionId}`, REFRESH_TTL, JSON.stringify({ userId: user.id, csrf, fingerprint: sessionFingerprint(req), createdAt: nowIso() })],
+    ['SADD', indexKey, sessionId],
+    ['EXPIRE', indexKey, REFRESH_TTL]
+  ]);
   res.setHeader('Set-Cookie', [
     cookieString(ACCESS_COOKIE, access, ACCESS_TTL, req),
     cookieString(REFRESH_COOKIE, refresh, REFRESH_TTL, req),
@@ -808,13 +936,28 @@ async function issueSession(req, res, env, user, additionalCookies = []) {
   return csrf;
 }
 
+async function revokeUserSessions(env, userId) {
+  const id = cleanText(userId, 120);
+  if (!id) return;
+  const indexKey = `${PREFIX}user-sessions:${id}`;
+  const sessionIds = await redisCommand(env, ['SMEMBERS', indexKey]).catch(() => []);
+  const commands = (Array.isArray(sessionIds) ? sessionIds : []).map((sid) => ['DEL', `${PREFIX}session:${cleanText(sid, 160)}`]);
+  commands.push(['DEL', indexKey]);
+  await redisPipeline(env, commands);
+}
+
 function readBody(req) {
   if (!req.body) return {};
-  if (typeof req.body === 'object') return req.body;
+  if (typeof req.body === 'object' && !Array.isArray(req.body)) return req.body;
+  if (typeof req.body !== 'string' || Buffer.byteLength(req.body, 'utf8') > MAX_BODY_BYTES) {
+    throw httpError(413, 'Request body is too large.', 'BODY_TOO_LARGE');
+  }
   try {
-    return JSON.parse(req.body);
+    const parsed = JSON.parse(req.body);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid');
+    return parsed;
   } catch {
-    return {};
+    throw badRequest('The request body must be valid JSON.', 'INVALID_JSON');
   }
 }
 
@@ -822,6 +965,8 @@ function json(res, status, body, cacheControl = 'no-store, max-age=0') {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', cacheControl);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   return res.end(JSON.stringify(body));
 }
 
@@ -871,10 +1016,8 @@ function sanitizeEntityItem(entity, input, existing = null) {
   }
 
   if (entity === 'shop') {
-    const imageUrl = cleanText(input.imageUrl, 2000);
-    const purchaseUrl = cleanText(input.purchaseUrl, 2000);
-    if (imageUrl && !/^https:\/\//i.test(imageUrl)) throw new Error('Shop image URLs must use HTTPS.');
-    if (purchaseUrl && !/^https:\/\//i.test(purchaseUrl)) throw new Error('Shop purchase URLs must use HTTPS.');
+    const imageUrl = safeUrl(input.imageUrl, { message: 'Shop image URLs must use HTTPS.' });
+    const purchaseUrl = safeUrl(input.purchaseUrl, { message: 'Shop purchase URLs must use HTTPS.' });
     return {
       ...base,
       title: cleanText(input.title, 180),
@@ -891,8 +1034,7 @@ function sanitizeEntityItem(entity, input, existing = null) {
     };
   }
   if (entity === 'images') {
-    const url = cleanText(input.url, 2000);
-    if (url && !/^https:\/\//i.test(url)) throw new Error('Image URLs must use HTTPS.');
+    const url = safeUrl(input.url, { message: 'Image URLs must use HTTPS.' });
     return {
       ...base,
       title: cleanText(input.title, 180),
@@ -952,13 +1094,13 @@ function sanitizeEntityItem(entity, input, existing = null) {
       : String(input.discordRoleIds || '').split(/[\s,]+/);
     return {
       ...base,
-      id: cleanText(input.id || base.id, 80),
+      id: existing?.id || cleanText(input.id || base.id, 80),
       name: cleanText(input.name, 120),
-      permissions: permissions.filter((permission) => ALL_PERMISSIONS.includes(permission)),
+      permissions: existing?.id === 'founder' ? [...ALL_PERMISSIONS] : permissions.filter((permission) => ALL_PERMISSIONS.includes(permission)),
       discordRoleIds: [...new Set(discordRoleIds.map((value) => cleanText(value, 30)).filter((value) => /^\d{15,22}$/.test(value)))],
       department: cleanText(input.department || base.department, 160),
       defaultRank: cleanText(input.defaultRank || base.defaultRank, 160),
-      priority: Number.isFinite(Number(input.priority)) ? Number(input.priority) : Number(base.priority || 0),
+      priority: existing?.id === 'founder' ? Math.max(100, Number(input.priority || base.priority || 100)) : (Number.isFinite(Number(input.priority)) ? Math.max(-1000, Math.min(1000, Number(input.priority))) : Number(base.priority || 0)),
       system: Boolean(base.system)
     };
   }
@@ -966,8 +1108,8 @@ function sanitizeEntityItem(entity, input, existing = null) {
     return {
       communityName: cleanText(input.communityName || base.communityName || 'Blackstone RP', 160),
       serverEndpoint: cleanText(input.serverEndpoint || base.serverEndpoint, 160),
-      joinUrl: cleanText(input.joinUrl || base.joinUrl, 1000),
-      discordUrl: cleanText(input.discordUrl || base.discordUrl, 1000),
+      joinUrl: safeUrl(input.joinUrl || base.joinUrl, { message: 'The FiveM join URL must be a secure HTTPS address.' }),
+      discordUrl: safeUrl(input.discordUrl || base.discordUrl, { hosts: ['discord.gg', 'discord.com', 'www.discord.com'], message: 'The Discord invite must use discord.gg or discord.com.' }),
       galleryChannelId: cleanText(input.galleryChannelId || base.galleryChannelId, 30),
       applicationsOpen: bool(input.applicationsOpen, true),
       updatedAt: timestamp
@@ -979,7 +1121,7 @@ function sanitizeEntityItem(entity, input, existing = null) {
 async function sanitizeUserInput(input, existing = null) {
   const timestamp = nowIso();
   const email = cleanEmail(input.email || existing?.email);
-  if (!isEmail(email)) throw new Error('A valid email address is required.');
+  if (!isEmail(email)) throw badRequest('A valid email address is required.', 'INVALID_EMAIL');
   const output = {
     ...(existing || {}),
     id: existing?.id || cleanText(input.id, 100) || randomId('user'),
@@ -999,14 +1141,14 @@ async function sanitizeUserInput(input, existing = null) {
   };
   const newPassword = String(input.newPassword || input.password || '');
   if (newPassword) {
-    if (newPassword.length < 10) throw new Error('Passwords must be at least 10 characters.');
+    if (newPassword.length < 10 || newPassword.length > MAX_PASSWORD_LENGTH) throw badRequest(`Passwords must be between 10 and ${MAX_PASSWORD_LENGTH} characters.`, 'INVALID_PASSWORD');
     output.passwordHash = await hashPassword(newPassword);
   } else if (existing?.passwordHash) {
     output.passwordHash = existing.passwordHash;
   } else if (existing?.authProvider === 'discord') {
     delete output.passwordHash;
   } else {
-    throw new Error('A password is required for a new account.');
+    throw badRequest('A password is required for a new account.', 'PASSWORD_REQUIRED');
   }
   return output;
 }
@@ -1014,17 +1156,62 @@ async function sanitizeUserInput(input, existing = null) {
 function validateApplication(input) {
   const required = ['applicationType', 'discord', 'discordId', 'age', 'timezone', 'fivem', 'experience', 'availability', 'history', 'character', 'quality', 'scenario1', 'scenario2', 'scenario3'];
   for (const field of required) {
-    if (!cleanText(input[field], 10000)) throw new Error(`Missing required field: ${field}.`);
+    if (!cleanText(input[field], 10000)) throw badRequest(`Missing required field: ${field}.`, 'APPLICATION_INCOMPLETE');
   }
   const age = Number(input.age);
-  if (!Number.isFinite(age) || age < 16 || age > 99) throw new Error('Age must be between 16 and 99.');
-  if (!/^\d{15,20}$/.test(String(input.discordId))) throw new Error('Discord user ID must contain 15 to 20 digits.');
+  if (!Number.isFinite(age) || age < 16 || age > 99) throw badRequest('Age must be between 16 and 99.', 'INVALID_AGE');
+  if (!/^\d{15,22}$/.test(String(input.discordId))) throw badRequest('Discord user ID must contain 15 to 22 digits.', 'INVALID_DISCORD_ID');
   if (!bool(input.rulesConfirmed) || !bool(input.honestConfirmed) || !bool(input.contactConfirmed)) {
-    throw new Error('All applicant declarations must be accepted.');
+    throw badRequest('All applicant declarations must be accepted.', 'DECLARATIONS_REQUIRED');
   }
 }
 
-async function getPublicPayload(env) {
+function validateEntityItem(entity, item) {
+  const required = {
+    announcements: ['title', 'body'],
+    departments: ['name'],
+    events: ['title'],
+    shop: ['title'],
+    images: ['url'],
+    members: ['displayName'],
+    roles: ['id', 'name']
+  }[entity] || [];
+  for (const field of required) {
+    if (!cleanText(item?.[field], 8000)) throw badRequest(`${field} is required.`, 'MISSING_REQUIRED_FIELD');
+  }
+  if (entity === 'roles' && !/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(item.id)) {
+    throw badRequest('Role IDs may contain only letters, numbers, hyphens and underscores.', 'INVALID_ROLE_ID');
+  }
+  if (entity === 'events' && item.startsAt && Number.isNaN(new Date(item.startsAt).getTime())) {
+    throw badRequest('The event start date is invalid.', 'INVALID_EVENT_DATE');
+  }
+  if (entity === 'applications' && !['Pending', 'Under Review', 'Accepted', 'Declined', 'Changes Requested'].includes(item.status)) {
+    throw badRequest('The application status is invalid.', 'INVALID_APPLICATION_STATUS');
+  }
+}
+
+function roleById(roles, id) {
+  return roles.find((role) => role.id === id) || null;
+}
+
+function assertRoleAssignmentAllowed(actor, roles, roleId) {
+  const target = roleById(roles, roleId || 'member');
+  if (!target) throw badRequest('The selected website role does not exist.', 'INVALID_ROLE');
+  const actorPriority = Number(actor?.rolePriority || 0);
+  const targetPriority = Number(target.priority || 0);
+  if (targetPriority > actorPriority) throw httpError(403, 'You cannot assign a role above your own access level.', 'ROLE_ESCALATION_BLOCKED');
+  return target;
+}
+
+function assertTargetManageable(actor, roles, targetRoleId) {
+  const target = roleById(roles, targetRoleId || 'member');
+  if (!target) return;
+  if (Number(target.priority || 0) > Number(actor?.rolePriority || 0)) {
+    throw httpError(403, 'You cannot modify an account above your own access level.', 'TARGET_ACCESS_DENIED');
+  }
+}
+
+async function buildPublicPayload(env) {
   const defaults = defaultData();
   if (!isRedisConfigured(env)) {
     return {
@@ -1040,7 +1227,13 @@ async function getPublicPayload(env) {
     };
   }
   await ensureSeeded(env);
-  const data = await getAllData(env);
+  const names = ['announcements', 'departments', 'events', 'shop', 'images', 'members', 'settings'];
+  const values = await redisCommand(env, ['MGET', ...names.map((name) => `${PREFIX}${name}`)]);
+  const data = {};
+  names.forEach((name, index) => {
+    try { data[name] = values?.[index] ? JSON.parse(values[index]) : structuredClone(defaults[name]); }
+    catch { data[name] = structuredClone(defaults[name]); }
+  });
   let discordAnnouncements = [];
   let discordLoaded = false;
   if (discordAnnouncementsConfigured(env)) {
@@ -1048,7 +1241,7 @@ async function getPublicPayload(env) {
       discordAnnouncements = await getDiscordAnnouncements(env);
       discordLoaded = true;
     } catch (error) {
-      console.warn('[Blackstone announcements read]', error.message);
+      console.warn('[Blackstone announcements read]', cleanText(error.message, 240));
     }
   }
   return {
@@ -1064,20 +1257,46 @@ async function getPublicPayload(env) {
   };
 }
 
+async function getPublicPayload(env) {
+  const now = Date.now();
+  if (publicPayloadCache.value && publicPayloadCache.expiresAt > now) return publicPayloadCache.value;
+  if (publicPayloadCache.promise) return publicPayloadCache.promise;
+  publicPayloadCache.promise = buildPublicPayload(env)
+    .then((value) => {
+      publicPayloadCache.value = value;
+      publicPayloadCache.expiresAt = Date.now() + PUBLIC_CACHE_TTL_MS;
+      return value;
+    })
+    .finally(() => { publicPayloadCache.promise = null; });
+  return publicPayloadCache.promise;
+}
+
 function requestOrigin(req, env) {
-  const configured = cleanText(env.PUBLIC_SITE_URL || '', 1000).replace(/\/$/, '');
-  if (/^https?:\/\//i.test(configured)) return configured;
-  const host = cleanText(req.headers?.['x-forwarded-host'] || req.headers?.host || '', 500);
-  if (!host) return '';
-  const forwardedProto = cleanText(String(req.headers?.['x-forwarded-proto'] || '').split(',')[0], 20);
-  const protocol = forwardedProto || (/^(localhost|127\.0\.0\.1)(:|$)/i.test(host) ? 'http' : 'https');
-  return `${protocol}://${host}`;
+  const configured = cleanText(env.PUBLIC_SITE_URL || '', 1000);
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      if (url.protocol === 'https:' && !url.username && !url.password) return url.origin;
+      if (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)) return url.origin;
+    } catch {}
+    return '';
+  }
+  const host = cleanText(req.headers?.host || '', 500);
+  if (/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) return `http://${host}`;
+  return '';
 }
 
 function discordRedirectUri(req, env) {
-  const configured = cleanText(env.DISCORD_REDIRECT_URI || '', 1000);
-  if (/^https?:\/\//i.test(configured)) return configured;
   const origin = requestOrigin(req, env);
+  const configured = cleanText(env.DISCORD_REDIRECT_URI || '', 1000);
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      const local = url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+      if ((url.protocol === 'https:' || local) && !url.username && !url.password && (!origin || url.origin === origin)) return url.href;
+    } catch {}
+    return '';
+  }
   return origin ? `${origin}/api/discord-callback` : '';
 }
 
@@ -1112,6 +1331,8 @@ function mappedWebsiteRole(discordRoleIds, websiteRoles) {
 
 async function startDiscordOAuth(req, res, env) {
   if (!isRedisConfigured(env)) throw Object.assign(new Error('Portal database is not configured.'), { code: 'DATABASE_NOT_CONFIGURED' });
+  const allowed = await rateLimit(env, `oauth-start:${clientIp(req)}`, 20, 10 * 60);
+  if (!allowed) throw httpError(429, 'Too many sign-in attempts. Try again in a few minutes.', 'RATE_LIMITED');
   if (authSecret(env).length < 32) throw Object.assign(new Error('AUTH_SECRET must be at least 32 characters.'), { code: 'AUTH_NOT_CONFIGURED' });
   if (!discordOAuthConfigured(env)) throw new Error('Discord sign-in is not configured.');
   const redirectUri = discordRedirectUri(req, env);
@@ -1121,6 +1342,7 @@ async function startDiscordOAuth(req, res, env) {
   const nonce = crypto.randomBytes(24).toString('base64url');
   const returnTo = cleanText(req.query?.returnTo, 20) === 'admin' ? 'admin' : 'portal';
   const state = signToken({ type: 'oauth-state', nonce, returnTo, iat: now, exp: now + OAUTH_STATE_TTL }, env);
+  await redisCommand(env, ['SETEX', `${PREFIX}oauth-state:${nonce}`, OAUTH_STATE_TTL, clientFingerprint(req)]);
   const params = new URLSearchParams({
     client_id: String(env.DISCORD_CLIENT_ID),
     response_type: 'code',
@@ -1134,16 +1356,24 @@ async function startDiscordOAuth(req, res, env) {
 
 async function completeDiscordOAuth(req, res, env) {
   if (!discordOAuthConfigured(env)) throw new Error('Discord sign-in is not configured.');
+  if (req.query?.error) throw httpError(400, 'Discord did not approve the sign-in request.', 'DISCORD_OAUTH_DENIED');
+  const allowed = await rateLimit(env, `oauth-callback:${clientIp(req)}`, 20, 10 * 60);
+  if (!allowed) throw httpError(429, 'Too many sign-in attempts. Try again in a few minutes.', 'RATE_LIMITED');
   const code = cleanText(req.query?.code || '', 1000);
   const state = cleanText(req.query?.state || '', 4000);
   const statePayload = verifyToken(state, env, 'oauth-state');
   const stateCookie = parseCookies(req)[OAUTH_STATE_COOKIE];
   if (!code || !statePayload?.nonce || !stateCookie || statePayload.nonce !== stateCookie) {
-    throw new Error('Discord sign-in security check failed. Please try again.');
+    throw httpError(400, 'Discord sign-in security check failed. Please try again.', 'INVALID_OAUTH_STATE');
+  }
+  const storedFingerprint = await redisCommand(env, ['GETDEL', `${PREFIX}oauth-state:${statePayload.nonce}`]);
+  if (!storedFingerprint || storedFingerprint !== clientFingerprint(req)) {
+    throw httpError(400, 'This Discord sign-in request has expired or was already used.', 'OAUTH_STATE_REPLAY');
   }
 
   const redirectUri = discordRedirectUri(req, env);
-  const tokenResponse = await fetch('https://discord.com/api/v10/oauth2/token', {
+  if (!redirectUri) throw new Error('Discord redirect URL is not configured correctly.');
+  const tokenResponse = await fetchWithTimeout('https://discord.com/api/v10/oauth2/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
     body: new URLSearchParams({
@@ -1154,21 +1384,21 @@ async function completeDiscordOAuth(req, res, env) {
       redirect_uri: redirectUri
     }).toString(),
     cache: 'no-store'
-  });
+  }, DISCORD_TIMEOUT_MS);
   const tokenPayload = await tokenResponse.json().catch(() => ({}));
   if (!tokenResponse.ok || !tokenPayload.access_token) throw new Error('Discord did not approve the sign-in request.');
 
-  const discordUserResponse = await fetch('https://discord.com/api/v10/users/@me', {
+  const discordUserResponse = await fetchWithTimeout('https://discord.com/api/v10/users/@me', {
     headers: { Authorization: `Bearer ${tokenPayload.access_token}`, Accept: 'application/json' },
     cache: 'no-store'
-  });
+  }, DISCORD_TIMEOUT_MS);
   const discordUser = await discordUserResponse.json().catch(() => ({}));
   if (!discordUserResponse.ok || !discordUser.id) throw new Error('Discord account details could not be loaded.');
 
-  const botHeaders = { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, Accept: 'application/json', 'User-Agent': 'BlackstoneRP-Website/2.0' };
+  const botHeaders = { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, Accept: 'application/json', 'User-Agent': 'BlackstoneRP-Website/4.7' };
   const [guildMemberResponse, guildRolesResponse] = await Promise.all([
-    fetch(`https://discord.com/api/v10/guilds/${cleanText(env.DISCORD_GUILD_ID, 30)}/members/${discordUser.id}`, { headers: botHeaders, cache: 'no-store' }),
-    fetch(`https://discord.com/api/v10/guilds/${cleanText(env.DISCORD_GUILD_ID, 30)}/roles`, { headers: botHeaders, cache: 'no-store' })
+    fetchWithTimeout(`https://discord.com/api/v10/guilds/${cleanText(env.DISCORD_GUILD_ID, 30)}/members/${discordUser.id}`, { headers: botHeaders, cache: 'no-store' }, DISCORD_TIMEOUT_MS),
+    fetchWithTimeout(`https://discord.com/api/v10/guilds/${cleanText(env.DISCORD_GUILD_ID, 30)}/roles`, { headers: botHeaders, cache: 'no-store' }, DISCORD_TIMEOUT_MS)
   ]);
   if (guildMemberResponse.status === 404) throw new Error('Join the Blackstone RP Discord server before signing in.');
   if (!guildMemberResponse.ok) throw new Error('Blackstone Discord membership could not be verified.');
@@ -1184,6 +1414,11 @@ async function completeDiscordOAuth(req, res, env) {
   ]);
   const mappedRole = mappedWebsiteRoleRecord(discordRoleIds, websiteRoles);
   const mappedRoleId = mappedRole.id;
+  const isAuthorisedStaff = Array.isArray(mappedRole.permissions) && mappedRole.permissions.includes('dashboard.view');
+  if (!isAuthorisedStaff) {
+    res.setHeader('Set-Cookie', clearCookie(OAUTH_STATE_COOKIE, req, 'Lax'));
+    throw httpError(403, 'This Discord account does not have authorised staff access.', 'STAFF_ACCESS_REQUIRED');
+  }
   const timestamp = nowIso();
   const displayName = cleanText(guildMember.nick || discordUser.global_name || discordUser.username || 'Discord Member', 120);
   let member = members.find((item) => item.discordId === String(discordUser.id));
@@ -1266,12 +1501,7 @@ async function completeDiscordOAuth(req, res, env) {
   await issueSession(req, res, env, user, [clearCookie(OAUTH_STATE_COOKIE, req, 'Lax')]);
   await appendAudit(env, { actorId: user.id, actorName: user.displayName, action: 'auth.discord_login', entity: 'users', targetId: user.id });
   const origin = requestOrigin(req, env);
-  const assignedRole = websiteRoles.find((role) => role.id === user.roleId);
-  const canOpenAdmin = Array.isArray(assignedRole?.permissions) && assignedRole.permissions.includes('dashboard.view');
-  const destination = canOpenAdmin
-    ? 'admin.html'
-    : `login.html?loginError=${encodeURIComponent('This Discord account does not have authorised staff access.')}`;
-  return redirect(res, 302, `${origin}/${destination}`);
+  return redirect(res, 302, `${origin}/admin.html`);
 }
 
 async function discordSync(env) {
@@ -1279,8 +1509,8 @@ async function discordSync(env) {
   const guildId = cleanText(env.DISCORD_GUILD_ID || '', 30);
   if (!token || !guildId) throw new Error('DISCORD_BOT_TOKEN and DISCORD_GUILD_ID are required for Discord sync.');
 
-  const headers = { Authorization: `Bot ${token}`, Accept: 'application/json', 'User-Agent': 'BlackstoneRP-Website/2.0' };
-  const rolesResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, { headers, cache: 'no-store' });
+  const headers = { Authorization: `Bot ${token}`, Accept: 'application/json', 'User-Agent': 'BlackstoneRP-Website/4.7' };
+  const rolesResponse = await fetchWithTimeout(`https://discord.com/api/v10/guilds/${guildId}/roles`, { headers, cache: 'no-store' }, DISCORD_TIMEOUT_MS);
   if (!rolesResponse.ok) throw new Error(`Discord roles request failed (${rolesResponse.status}).`);
   const discordRoles = await rolesResponse.json();
   const roleMap = new Map(discordRoles.map((role) => [String(role.id), cleanText(role.name, 120)]));
@@ -1288,7 +1518,7 @@ async function discordSync(env) {
   const guildMembers = [];
   let after = '0';
   for (let page = 0; page < 10; page += 1) {
-    const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members?limit=1000&after=${after}`, { headers, cache: 'no-store' });
+    const response = await fetchWithTimeout(`https://discord.com/api/v10/guilds/${guildId}/members?limit=1000&after=${after}`, { headers, cache: 'no-store' }, DISCORD_TIMEOUT_MS);
     if (!response.ok) throw new Error(`Discord members request failed (${response.status}). Enable Server Members Intent and check bot permissions.`);
     const batch = await response.json();
     if (!Array.isArray(batch)) break;
@@ -1375,7 +1605,7 @@ async function discordSync(env) {
     if (!member) continue;
     user.memberId = member.id;
     user.roleMode = user.roleMode || 'discord';
-    if (roleMappingConfigured && user.roleMode === 'discord') user.roleId = member.roleId;
+    if (roleMappingConfigured && user.roleMode === 'discord' && member.roleMode === 'discord') user.roleId = member.roleId;
     user.discordUsername = member.discordUsername;
     user.updatedAt = timestamp;
   }
@@ -1405,15 +1635,18 @@ function canReadAdminEntity(user, entity) {
 }
 
 async function handlePortal(req, res, env = process.env) {
+  const requestId = randomId('req');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  res.setHeader('X-Request-ID', requestId);
   if (req.method === 'OPTIONS') return json(res, 204, {});
 
   const action = cleanText(req.query?.action || 'public', 80).toLowerCase();
-  const body = readBody(req);
 
   try {
+    const body = readBody(req);
     if (action === 'public' && req.method === 'GET') {
       return json(
         res,
@@ -1424,23 +1657,33 @@ async function handlePortal(req, res, env = process.env) {
     }
 
     if (action === 'setup-status' && req.method === 'GET') {
+      const databaseConfigured = isRedisConfigured(env);
+      let bootstrapAdminConfigured = Boolean(env.ADMIN_EMAIL && String(env.ADMIN_PASSWORD || '').length >= 10);
+      if (databaseConfigured) {
+        try {
+          await ensureSeeded(env);
+          const users = await getJson(env, 'users', []);
+          bootstrapAdminConfigured = bootstrapAdminConfigured || users.some((user) => user.active !== false && user.roleId === 'founder');
+        } catch {}
+      }
       return json(res, 200, {
         ok: true,
-        databaseConfigured: isRedisConfigured(env),
+        databaseConfigured,
         authConfigured: authSecret(env).length >= 32,
-        bootstrapAdminConfigured: Boolean(env.ADMIN_EMAIL && String(env.ADMIN_PASSWORD || '').length >= 10),
+        bootstrapAdminConfigured,
+        siteUrlConfigured: Boolean(requestOrigin(req, env)),
         discordSyncConfigured: Boolean(env.DISCORD_BOT_TOKEN && env.DISCORD_GUILD_ID),
         discordOAuthConfigured: discordOAuthConfigured(env)
       });
     }
 
     if (action === 'discord-login' && req.method === 'GET') {
-      return startDiscordOAuth(req, res, env);
+      return await startDiscordOAuth(req, res, env);
     }
 
     if (action === 'discord-callback' && req.method === 'GET') {
       await ensureSeeded(env);
-      return completeDiscordOAuth(req, res, env);
+      return await completeDiscordOAuth(req, res, env);
     }
 
     if (!isRedisConfigured(env)) {
@@ -1449,6 +1692,7 @@ async function handlePortal(req, res, env = process.env) {
     await ensureSeeded(env);
 
     if (action === 'apply' && req.method === 'POST') {
+      if (cleanText(body.website || body.company || '', 200)) return json(res, 201, { ok: true, submittedAt: nowIso() });
       const settings = await getJson(env, 'settings', defaultData().settings);
       if (settings.applicationsOpen === false) return json(res, 403, { ok: false, message: 'Blackstone RP applications are currently closed.' });
       const allowed = await rateLimit(env, `apply:${clientIp(req)}`, 5, 24 * 60 * 60);
@@ -1463,50 +1707,76 @@ async function handlePortal(req, res, env = process.env) {
     }
 
     if (action === 'login' && req.method === 'POST') {
-      const allowed = await rateLimit(env, `login:${clientIp(req)}`, 8, 15 * 60);
-      if (!allowed) return json(res, 429, { ok: false, message: 'Too many login attempts. Try again in 15 minutes.' });
       const email = cleanEmail(body.email);
       const password = String(body.password || '');
-      const [users, roles] = await Promise.all([getJson(env, 'users', []), getJson(env, 'roles', defaultData().roles)]);
+      const ipAllowed = await rateLimit(env, `login-ip:${clientIp(req)}`, 20, 15 * 60);
+      const accountKey = crypto.createHash('sha256').update(email || 'missing').digest('hex').slice(0, 32);
+      const accountAllowed = await rateLimit(env, `login-account:${accountKey}`, 8, 15 * 60);
+      if (!ipAllowed || !accountAllowed) return json(res, 429, { ok: false, message: 'Too many login attempts. Try again in 15 minutes.' });
+      const values = await redisCommand(env, ['MGET', `${PREFIX}users`, `${PREFIX}roles`]);
+      let users = [];
+      let roles = defaultData().roles;
+      try { users = values?.[0] ? JSON.parse(values[0]) : []; } catch { users = []; }
+      try { roles = values?.[1] ? JSON.parse(values[1]) : defaultData().roles; } catch { roles = defaultData().roles; }
       const user = users.find((candidate) => candidate.email === email && candidate.active !== false);
       if (!user || !(await verifyPassword(password, user.passwordHash))) {
         return json(res, 401, { ok: false, message: 'Incorrect email or password.' });
+      }
+      const safeUser = publicUser(user, roles);
+      if (!safeUser.permissions.includes('dashboard.view')) {
+        return json(res, 403, { ok: false, message: 'This account does not have authorised staff access.' });
       }
       user.lastLoginAt = nowIso();
       user.updatedAt = nowIso();
       await setJson(env, 'users', users);
       const csrfToken = await issueSession(req, res, env, user);
-      const safeUser = publicUser(user, roles);
       await appendAudit(env, { actorId: user.id, actorName: user.displayName || user.email, action: 'auth.login', entity: 'users', targetId: user.id });
       return json(res, 200, { ok: true, user: safeUser, csrfToken });
     }
 
     if (action === 'refresh' && req.method === 'POST') {
+      if (!allowedRequestOrigin(req, env)) return json(res, 403, { ok: false, message: 'Request origin was not accepted.' });
       const cookies = parseCookies(req);
       const payload = verifyToken(cookies[REFRESH_COOKIE], env, 'refresh');
       if (!payload?.sub || !payload?.sid) return json(res, 401, { ok: false, message: 'Session expired.' });
-      const session = await redisCommand(env, ['GET', `${PREFIX}session:${payload.sid}`]);
-      if (!session) return json(res, 401, { ok: false, message: 'Session expired.' });
-      const users = await getJson(env, 'users', []);
+      const rawSession = await redisCommand(env, ['GETDEL', `${PREFIX}session:${payload.sid}`]);
+      await redisCommand(env, ['SREM', `${PREFIX}user-sessions:${payload.sub}`, payload.sid]).catch(() => {});
+      if (!rawSession) return json(res, 401, { ok: false, message: 'Session expired.' });
+      let session;
+      try { session = JSON.parse(rawSession); } catch { session = null; }
+      if (!session || session.userId !== payload.sub || (session.fingerprint && session.fingerprint !== sessionFingerprint(req))) {
+        return json(res, 401, { ok: false, message: 'Session expired.' });
+      }
+      const values = await redisCommand(env, ['MGET', `${PREFIX}users`, `${PREFIX}roles`]);
+      let users = [];
+      let roles = defaultData().roles;
+      try { users = values?.[0] ? JSON.parse(values[0]) : []; } catch { users = []; }
+      try { roles = values?.[1] ? JSON.parse(values[1]) : defaultData().roles; } catch { roles = defaultData().roles; }
       const user = users.find((candidate) => candidate.id === payload.sub && candidate.active !== false);
       if (!user) return json(res, 401, { ok: false, message: 'Account unavailable.' });
-      await redisCommand(env, ['DEL', `${PREFIX}session:${payload.sid}`]);
-      const roles = await getJson(env, 'roles', defaultData().roles);
+      const safeUser = publicUser(user, roles);
+      if (!safeUser.permissions.includes('dashboard.view')) return json(res, 403, { ok: false, message: 'Staff access is no longer available.' });
       const csrfToken = await issueSession(req, res, env, user);
-      return json(res, 200, { ok: true, user: publicUser(user, roles), csrfToken });
+      return json(res, 200, { ok: true, user: safeUser, csrfToken });
     }
 
     if (action === 'logout' && req.method === 'POST') {
+      if (!allowedRequestOrigin(req, env)) return json(res, 403, { ok: false, message: 'Request origin was not accepted.' });
       const cookies = parseCookies(req);
       const payload = verifyToken(cookies[REFRESH_COOKIE], env, 'refresh');
-      if (payload?.sid) await redisCommand(env, ['DEL', `${PREFIX}session:${payload.sid}`]);
-      res.setHeader('Set-Cookie', [clearCookie(ACCESS_COOKIE, req), clearCookie(REFRESH_COOKIE, req)]);
+      if (payload?.sid) {
+        await redisPipeline(env, [
+          ['DEL', `${PREFIX}session:${payload.sid}`],
+          ['SREM', `${PREFIX}user-sessions:${payload.sub}`, payload.sid]
+        ]).catch(() => {});
+      }
+      res.setHeader('Set-Cookie', [clearCookie(ACCESS_COOKIE, req), clearCookie(REFRESH_COOKIE, req), clearCookie(OAUTH_STATE_COOKIE, req, 'Lax')]);
       return json(res, 200, { ok: true });
     }
 
     const currentUser = await authenticate(req, env);
     if (!currentUser) return json(res, 401, { ok: false, message: 'Sign in required.' });
-    if (!requireCsrf(req, currentUser)) return json(res, 403, { ok: false, message: 'Security token mismatch. Refresh the page and try again.' });
+    if (!requireCsrf(req, currentUser, env)) return json(res, 403, { ok: false, message: 'Security token mismatch. Refresh the page and try again.' });
 
     if (action === 'me' && req.method === 'GET') {
       const members = await getJson(env, 'members', []);
@@ -1556,7 +1826,7 @@ async function handlePortal(req, res, env = process.env) {
     if (action === 'change-password' && req.method === 'POST') {
       const currentPassword = String(body.currentPassword || '');
       const newPassword = String(body.newPassword || '');
-      if (newPassword.length < 10) return json(res, 400, { ok: false, message: 'New password must be at least 10 characters.' });
+      if (newPassword.length < 10 || newPassword.length > MAX_PASSWORD_LENGTH) return json(res, 400, { ok: false, message: `New password must be between 10 and ${MAX_PASSWORD_LENGTH} characters.` });
       const users = await getJson(env, 'users', []);
       const userRecord = users.find((item) => item.id === currentUser.id);
       if (!userRecord || !(await verifyPassword(currentPassword, userRecord.passwordHash))) {
@@ -1565,8 +1835,10 @@ async function handlePortal(req, res, env = process.env) {
       userRecord.passwordHash = await hashPassword(newPassword);
       userRecord.updatedAt = nowIso();
       await setJson(env, 'users', users);
+      await revokeUserSessions(env, currentUser.id);
+      res.setHeader('Set-Cookie', [clearCookie(ACCESS_COOKIE, req), clearCookie(REFRESH_COOKIE, req)]);
       await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: 'auth.password_changed', entity: 'users', targetId: currentUser.id });
-      return json(res, 200, { ok: true });
+      return json(res, 200, { ok: true, reauthenticate: true });
     }
 
     if (action === 'admin-dashboard' && req.method === 'GET') {
@@ -1611,23 +1883,40 @@ async function handlePortal(req, res, env = process.env) {
       if (entity === 'settings') {
         const existing = await getJson(env, 'settings', defaultData().settings);
         const item = sanitizeEntityItem('settings', body.item || {}, existing);
+        validateEntityItem('settings', item);
         await setJson(env, 'settings', item);
+        invalidatePublicCache();
         await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: 'settings.updated', entity, targetId: 'settings' });
         return json(res, 200, { ok: true, item });
       }
 
       const list = await getJson(env, entity, []);
       const input = body.item || {};
-      const index = list.findIndex((item) => item.id === input.id);
+      const originalId = cleanText(body.originalId || input.originalId || '', 120);
+      const lookupId = originalId || cleanText(input.id, 120);
+      const index = list.findIndex((candidate) => candidate.id === lookupId);
       const existing = index >= 0 ? list[index] : null;
+      if (entity === 'roles' && !originalId && existing) return json(res, 409, { ok: false, message: 'A role with that ID already exists.' });
       let item;
       if (entity === 'users') {
-        const duplicate = list.find((candidate) => candidate.email === cleanEmail(input.email) && candidate.id !== input.id);
+        const roles = await getJson(env, 'roles', defaultData().roles);
+        if (existing) assertTargetManageable(currentUser, roles, existing.roleId);
+        assertRoleAssignmentAllowed(currentUser, roles, input.roleId || existing?.roleId || 'member');
+        if (existing?.id === currentUser.id && bool(input.active, existing.active !== false) === false) {
+          return json(res, 400, { ok: false, message: 'You cannot deactivate your own account.' });
+        }
+        const duplicate = list.find((candidate) => candidate.email === cleanEmail(input.email) && candidate.id !== existing?.id);
         if (duplicate) return json(res, 409, { ok: false, message: 'An account already uses that email address.' });
         item = await sanitizeUserInput(input, existing);
       } else {
+        if (entity === 'members') {
+          const roles = await getJson(env, 'roles', defaultData().roles);
+          if (existing) assertTargetManageable(currentUser, roles, existing.roleId);
+          assertRoleAssignmentAllowed(currentUser, roles, input.roleId || existing?.roleId || 'member');
+        }
         item = sanitizeEntityItem(entity, input, existing);
       }
+      validateEntityItem(entity, item);
       let syncWarning = '';
       if (entity === 'announcements') {
         try {
@@ -1641,6 +1930,10 @@ async function handlePortal(req, res, env = process.env) {
       if (index >= 0) list[index] = item;
       else list.unshift(item);
       await setJson(env, entity, list);
+      if (PUBLIC_ENTITIES.has(entity) || entity === 'members') invalidatePublicCache();
+      if (entity === 'users' && existing && (existing.active !== item.active || existing.roleId !== item.roleId || existing.passwordHash !== item.passwordHash)) {
+        await revokeUserSessions(env, item.id);
+      }
       await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: existing ? `${entity}.updated` : `${entity}.created`, entity, targetId: item.id, details: syncWarning ? { syncWarning } : undefined });
       const responseItem = entity === 'users' ? { ...item, passwordHash: undefined } : item;
       return json(res, existing ? 200 : 201, { ok: true, item: responseItem, warning: syncWarning || undefined });
@@ -1656,6 +1949,10 @@ async function handlePortal(req, res, env = process.env) {
       const list = await getJson(env, entity, []);
       const target = list.find((item) => item.id === id);
       if (!target) return json(res, 404, { ok: false, message: 'Record not found.' });
+      if (['users', 'members'].includes(entity)) {
+        const roles = await getJson(env, 'roles', defaultData().roles);
+        assertTargetManageable(currentUser, roles, target.roleId);
+      }
       if (entity === 'roles' && target.system) return json(res, 400, { ok: false, message: 'System roles cannot be deleted.' });
       let syncWarning = '';
       if (entity === 'announcements') {
@@ -1667,6 +1964,8 @@ async function handlePortal(req, res, env = process.env) {
       }
       const filtered = list.filter((item) => item.id !== id);
       await setJson(env, entity, filtered);
+      if (PUBLIC_ENTITIES.has(entity) || entity === 'members') invalidatePublicCache();
+      if (entity === 'users') await revokeUserSessions(env, id);
       await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: `${entity}.deleted`, entity, targetId: id, details: syncWarning ? { syncWarning } : undefined });
       return json(res, 200, { ok: true, warning: syncWarning || undefined });
     }
@@ -1674,6 +1973,7 @@ async function handlePortal(req, res, env = process.env) {
     if (action === 'discord-sync' && req.method === 'POST') {
       if (!hasPermission(currentUser, 'discord.sync')) return json(res, 403, { ok: false, message: 'Permission denied.' });
       const result = await discordSync(env);
+      invalidatePublicCache();
       await appendAudit(env, { actorId: currentUser.id, actorName: currentUser.displayName, action: 'discord.synced', entity: 'members', targetId: 'discord', details: result });
       return json(res, 200, { ok: true, result });
     }
@@ -1688,18 +1988,26 @@ async function handlePortal(req, res, env = process.env) {
 
     return json(res, 404, { ok: false, message: 'Unknown endpoint.' });
   } catch (error) {
+    const status = Number(error?.status || 0) || (['DATABASE_NOT_CONFIGURED', 'AUTH_NOT_CONFIGURED'].includes(error?.code) ? 503 : 500);
+    if (status >= 500) console.error('[Blackstone portal]', { requestId, action, code: error?.code || 'UNEXPECTED_ERROR', message: cleanText(error?.message, 500) });
     if (action === 'discord-callback') {
       const origin = requestOrigin(req, env);
-      const message = cleanText(error.message || 'Discord sign-in failed.', 240);
-      if (origin) return redirect(res, 302, `${origin}/portal.html?loginError=${encodeURIComponent(message)}`);
+      const message = status < 500 ? cleanText(error.message || 'Discord sign-in failed.', 240) : 'Discord sign-in failed. Please try again or contact staff.';
+      if (origin) return redirect(res, 302, `${origin}/login.html?loginError=${encodeURIComponent(message)}`);
     }
-    const setupRequired = ['DATABASE_NOT_CONFIGURED', 'AUTH_NOT_CONFIGURED'].includes(error.code);
-    return json(res, setupRequired ? 503 : 500, {
+    const setupRequired = ['DATABASE_NOT_CONFIGURED', 'AUTH_NOT_CONFIGURED'].includes(error?.code);
+    const publicMessage = status >= 500 && !setupRequired
+      ? 'The website service encountered an unexpected error. Please try again.'
+      : cleanText(error?.message || 'Request failed.', 300);
+    return json(res, status, {
       ok: false,
       setupRequired,
-      message: setupRequired ? error.message : (error.message || 'Unexpected server error.')
+      message: publicMessage,
+      errorCode: cleanText(error?.code || (status >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR'), 80),
+      requestId
     });
   }
+
 }
 
 module.exports = { handlePortal, ALL_PERMISSIONS, getDiscordAnnouncements, discordAnnouncementsConfigured };

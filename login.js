@@ -5,19 +5,22 @@
   const loginButton = document.querySelector('#discordLogin');
   const status = document.querySelector('#setupStatus');
   const params = new URLSearchParams(location.search);
+  const REQUEST_TIMEOUT_MS = 10000;
 
   document.querySelector('#loginYear').textContent = new Date().getFullYear();
 
   async function api(action) {
-    const response = await fetch(
-      `${API}?${new URLSearchParams({ action })}`,
-      {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        credentials: 'same-origin',
-        cache: 'no-store'
-      }
-    );
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(`${API}?${new URLSearchParams({ action })}`, {
+        method: 'GET', headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error('The sign-in service timed out. Please try again.');
+      throw error;
+    } finally { window.clearTimeout(timeout); }
 
     const payload = await response.json().catch(() => ({
       ok: false,
@@ -64,6 +67,7 @@
       const ready = Boolean(
         setup.databaseConfigured &&
         setup.authConfigured &&
+        setup.siteUrlConfigured &&
         setup.discordOAuthConfigured
       );
 

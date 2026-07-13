@@ -3,6 +3,15 @@
 A responsive Blackstone RP website that preserves the supplied logo exactly as provided and follows its black, graphite, steel, silver and white palette.
 
 
+
+## Performance and security update 4.7
+
+This build reduces duplicate database and Discord requests, adds short shared caches, enforces request timeouts and body limits, paginates large Admin tables, and removes obsolete browser fallbacks. Security hardening includes staff-only session issuance, server-side session revocation, one-time refresh and OAuth state use, stricter role hierarchy enforcement, origin/CSRF checks, safer error responses, HTTPS URL validation and global browser security headers.
+
+After the first Founder account exists in Redis, `ADMIN_PASSWORD` may be removed from Vercel to reduce long-lived secret exposure. Keep `ADMIN_EMAIL` only if you still use it operationally. Changing `AUTH_SECRET` signs out every current session.
+
+See `CHANGELOG-PERFORMANCE-SECURITY-V4.7.md` and `SECURITY-DEPLOYMENT-CHECKLIST.md`.
+
 ## Performance update 4.2
 
 This build includes optimized WebP assets, static caching, shared live-status caching, deferred Discord gallery loading, background-tab polling suspension and smoother large-list searching in the Admin panel. See `CHANGELOG-PERFORMANCE-V4.2.md`.
@@ -47,6 +56,7 @@ Database and authentication:
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - Optional: `ADMIN_NAME`
+- Optional: `HEALTH_TOKEN` for private detailed health diagnostics
 
 Discord:
 

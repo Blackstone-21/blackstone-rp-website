@@ -44,7 +44,7 @@ Add the variables under the Pages project's environment variables, then redeploy
 
 ### cPanel or PHP hosting
 
-Add the variables through the host's environment-variable or application settings. The included `discord-gallery.php` endpoint reads them with `getenv`. Some shared hosts require support to enable server environment variables.
+Add the variables through the host's environment-variable or application settings. Configure these values in your deployment platform environment settings.
 
 ## 4. Upload images
 

@@ -5,6 +5,15 @@
   const titles = ['Choose your application', 'Tell us about yourself', 'Build your roleplay profile', 'Respond to the scenarios', 'Review and submit'];
   let currentStep = 1;
   let databaseReady = false;
+  const REQUEST_TIMEOUT_MS = 12000;
+
+  async function timedFetch(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try { return await fetch(url, { ...options, signal: controller.signal }); }
+    catch (error) { if (error?.name === 'AbortError') throw new Error('The request timed out. Please try again.'); throw error; }
+    finally { window.clearTimeout(timeout); }
+  }
 
   function showStep(step) {
     currentStep = Math.max(1, Math.min(5, step));
@@ -56,8 +65,8 @@
   async function setupStatus() {
     try {
       const [setupResponse, publicResponse] = await Promise.all([
-        fetch('api/portal?action=setup-status', { cache: 'no-store' }),
-        fetch('api/portal?action=public', { cache: 'default' })
+        timedFetch('api/portal?action=setup-status', { cache: 'no-store' }),
+        timedFetch('api/portal?action=public', { cache: 'default' })
       ]);
       const setup = await setupResponse.json();
       const publicData = await publicResponse.json();
@@ -92,7 +101,7 @@
     raw.honestConfirmed = form.elements.honestConfirmed.checked;
     raw.contactConfirmed = form.elements.contactConfirmed.checked;
     try {
-      const response = await fetch('api/portal?action=apply', {
+      const response = await timedFetch('api/portal?action=apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(raw)

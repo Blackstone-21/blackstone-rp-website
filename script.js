@@ -47,7 +47,8 @@
 
   // Throttle the decorative cursor glow to one DOM write per animation frame.
   // It is disabled on touch/coarse-pointer devices where it cannot be used.
-  const finePointer = window.matchMedia('(pointer: fine)').matches;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = window.matchMedia('(pointer: fine)').matches && !reducedMotion;
   let cursorFrame = 0;
   let cursorX = 0;
   let cursorY = 0;
@@ -143,7 +144,7 @@
       if (code) code.textContent = department.code;
       if (title) title.textContent = department.title;
       if (text) text.textContent = department.text;
-      if (list) list.innerHTML = department.items.map((item) => `<li>${item}</li>`).join('');
+      if (list) { const fragment=document.createDocumentFragment(); department.items.forEach((value)=>{const li=document.createElement('li');li.textContent=value;fragment.append(li)});list.replaceChildren(fragment); }
       if (art) art.textContent = department.num;
     });
   });
@@ -344,13 +345,7 @@
 
   function getGallerySources() {
     if (!['http:', 'https:'].includes(window.location.protocol)) return [];
-
-    // /api/discord-gallery works on Vercel and is redirected to the
-    // Netlify function by netlify.toml. PHP remains a compatibility fallback.
-    return [
-      [new URL('api/discord-gallery', document.baseURI).href, 'WEBSITE GALLERY API'],
-      [new URL('discord-gallery.php', document.baseURI).href, 'PHP GALLERY API']
-    ];
+    return [[new URL('api/discord-gallery', document.baseURI).href, 'WEBSITE GALLERY API']];
   }
 
   async function fetchGallerySource(url, label) {
@@ -416,8 +411,7 @@
     return {
       ok: false,
       configured: true,
-      message: 'The Discord gallery feed is temporarily unavailable.',
-      diagnostics: errors
+      message: 'The Discord gallery feed is temporarily unavailable.'
     };
   }
 
@@ -613,7 +607,7 @@
     endpoint: '163.227.178.25:30123',
     joinCode: '4xlaj5',
     refreshMs: 30000,
-    requestTimeoutMs: 8000,
+    requestTimeoutMs: 5000,
     playerListLimit: 12
   };
 
@@ -758,106 +752,23 @@
   }
 
   function getStatusSources() {
-    const sources = [];
-
-    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-      // Prefer the same-origin proxy so all visitors can share its short CDN cache.
-      sources.push([new URL('api/server-status', document.baseURI).href, 'WEBSITE STATUS PROXY']);
-    }
-
-    // Static-hosting fallback. The browser may use this when no serverless API exists.
-    sources.push([`https://servers-frontend.fivem.net/api/servers/single/${serverConfig.joinCode}`, 'CFX SERVER LIST']);
-
-    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-      sources.push([new URL('server-status.php', document.baseURI).href, 'PHP STATUS PROXY']);
-    }
-
-    if (window.location.protocol !== 'https:') {
-      sources.push([`http://${serverConfig.endpoint}/dynamic.json`, 'DIRECT SERVER FEED']);
-    }
-
-    return sources;
+    if (!['http:', 'https:'].includes(window.location.protocol)) return [];
+    return [[new URL('api/server-status', document.baseURI).href, 'WEBSITE STATUS PROXY']];
   }
 
   async function getLiveServerData() {
     const sources = getStatusSources();
-    const errors = [];
-    let primaryOffline = null;
-
-    // Prefer the shared same-origin status proxy when the site is hosted.
-    if (sources.length) {
-      const [url, label] = sources[0];
-      try {
-        const result = await fetchJsonWithTimeout(url, label);
-        if (result.online) return result;
-        // The same-origin proxy already checks all server sources. Trust its
-        // completed offline result rather than repeating those requests.
-        if (label === 'WEBSITE STATUS PROXY') return result;
-        primaryOffline = result;
-        errors.push(`${label}: server reported offline`);
-      } catch (error) {
-        const message = error?.name === 'AbortError' ? 'request timed out' : error.message;
-        errors.push(`${label}: ${message}`);
-      }
-    }
-
-    const fallbackSources = sources.slice(1);
-    if (!fallbackSources.length) {
-      return primaryOffline || {
+    if (!sources.length) {
+      return {
         online: false,
-        name: 'BLACKSTONE RP',
-        players: 0,
-        maxPlayers: 0,
-        playerList: [],
-        source: 'LIVE CHECK COMPLETE',
-        message: 'No live response was received. The server may be offline, restarting, or temporarily unavailable.',
-        checkedAt: new Date().toISOString(),
-        responseMs: 0,
-        diagnostics: errors
+        name: 'BLACKSTONE RP', players: 0, maxPlayers: 0, playerList: [],
+        source: 'HOSTED WEBSITE REQUIRED',
+        message: 'Live status is available from the hosted Blackstone RP website.',
+        checkedAt: new Date().toISOString(), responseMs: 0
       };
     }
-
-    return await new Promise((resolve) => {
-      let remaining = fallbackSources.length;
-      let settled = false;
-      let offlineResult = primaryOffline;
-
-      const finishOne = () => {
-        remaining -= 1;
-        if (remaining > 0 || settled) return;
-        settled = true;
-        resolve(offlineResult || {
-          online: false,
-          name: 'BLACKSTONE RP',
-          players: 0,
-          maxPlayers: 0,
-          playerList: [],
-          source: 'LIVE CHECK COMPLETE',
-          message: 'No live response was received. The server may be offline, restarting, or temporarily unavailable.',
-          checkedAt: new Date().toISOString(),
-          responseMs: 0,
-          diagnostics: errors
-        });
-      };
-
-      fallbackSources.forEach(async ([url, label]) => {
-        try {
-          const result = await fetchJsonWithTimeout(url, label);
-          if (result.online && !settled) {
-            settled = true;
-            resolve(result);
-            return;
-          }
-          offlineResult = offlineResult || result;
-          errors.push(`${label}: server reported offline`);
-        } catch (error) {
-          const message = error?.name === 'AbortError' ? 'request timed out' : error.message;
-          errors.push(`${label}: ${message}`);
-        } finally {
-          finishOne();
-        }
-      });
-    });
+    const [url, label] = sources[0];
+    return fetchJsonWithTimeout(url, label);
   }
 
   function renderPlayerList(data) {

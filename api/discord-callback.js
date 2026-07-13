@@ -12,8 +12,8 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     console.error('[Blackstone Discord callback]', error);
     if (res.headersSent) return res.end();
-    const origin = process.env.PUBLIC_SITE_URL || `https://${req.headers?.['x-forwarded-host'] || req.headers?.host || ''}`;
-    if (/^https:\/\//i.test(origin)) {
+    const origin = String(process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
+    if (/^https:\/\/[^/]+$/i.test(origin)) {
       res.statusCode = 302;
       res.setHeader('Location', `${origin.replace(/\/$/, '')}/login.html?loginError=${encodeURIComponent('Discord sign-in failed. Check the Vercel Function logs and OAuth redirect settings.')}`);
       res.setHeader('Cache-Control', 'no-store, max-age=0');

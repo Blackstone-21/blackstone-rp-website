@@ -3,12 +3,32 @@
   let csrfToken = sessionStorage.getItem('bsrp_csrf') || '';
   let currentUser = null;
   let currentMember = null;
+  let refreshPromise = null;
+  const REQUEST_TIMEOUT_MS = 10000;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const escapeText = (value) => String(value ?? '');
 
+  async function timedFetch(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try { return await fetch(url, { ...options, signal: controller.signal }); }
+    catch (error) {
+      if (error?.name === 'AbortError') throw new Error('The request timed out. Please try again.');
+      throw error;
+    } finally { window.clearTimeout(timeout); }
+  }
+
+  async function refreshSession() {
+    if (!refreshPromise) {
+      refreshPromise = api('refresh', { method: 'POST', retry: false })
+        .finally(() => { refreshPromise = null; });
+    }
+    return refreshPromise;
+  }
+
   async function api(action, options = {}) {
-    const response = await fetch(`${API}?action=${encodeURIComponent(action)}`, {
+    const response = await timedFetch(`${API}?action=${encodeURIComponent(action)}`, {
       method: options.method || 'GET',
       headers: {
         Accept: 'application/json',
@@ -20,6 +40,12 @@
       cache: action === 'public' ? 'default' : 'no-store'
     });
     const payload = await response.json().catch(() => ({ ok: false, message: 'Invalid server response.' }));
+    if (response.status === 401 && options.retry !== false && !['refresh','login'].includes(action)) {
+      try {
+        await refreshSession();
+        return api(action, { ...options, retry: false });
+      } catch { clearAccount(); }
+    }
     if (!response.ok || payload.ok === false) {
       const error = new Error(payload.message || `Request failed (${response.status}).`);
       error.status = response.status;
@@ -41,7 +67,7 @@
   async function loadServerStatus() {
     try {
       const started = performance.now();
-      const response = await fetch('api/server-status', { cache: 'default' });
+      const response = await timedFetch('api/server-status', { cache: 'default' });
       const data = await response.json();
       const responseTime = data.responseMs || Math.round(performance.now() - started);
       setText('#portalServerStatus', data.online ? 'ONLINE' : 'OFFLINE');
@@ -279,16 +305,7 @@
     try {
       const data = await api('me');
       applyAccount(data.user, data.member);
-    } catch (error) {
-      if (error.status !== 401) return;
-      try {
-        await api('refresh', { method: 'POST' });
-        const data = await api('me');
-        applyAccount(data.user, data.member);
-      } catch {
-        clearAccount();
-      }
-    }
+    } catch { clearAccount(); }
   }
 
   $('#accountButton').addEventListener('click', () => {

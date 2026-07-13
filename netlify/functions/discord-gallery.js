@@ -15,7 +15,12 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Robots-Tag': 'noindex, nofollow, noarchive'
+      },
       body: JSON.stringify({ ok: false, message: 'Method not allowed.' })
     };
   }
@@ -29,7 +34,9 @@ exports.handler = async (event) => {
       'Cache-Control': result.cacheable
         ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
         : 'no-store, max-age=0',
-      'Content-Type': 'application/json; charset=utf-8'
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Robots-Tag': 'noindex, nofollow, noarchive'
     },
     body: JSON.stringify(result.body)
   };

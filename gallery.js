@@ -20,7 +20,7 @@
     for (const endpoint of API_ENDPOINTS) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
+        const timeout = setTimeout(() => controller.abort(), 8000);
         try {
           const response = await fetch(endpoint, { headers: { Accept: 'application/json' }, cache: 'default', signal: controller.signal });
           const payload = await response.json().catch(() => ({ ok: false, message: `The gallery API returned a non-JSON response (${response.status}).` }));

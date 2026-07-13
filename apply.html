@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="apply.css?v=2" />
+  <link rel="stylesheet" href="apply.css?v=3" />
 </head>
 <body>
   <div class="ambient"></div>
@@ -38,6 +38,7 @@
       <header class="panel-header"><div><span id="sectionCode">SECTION 01 / 05</span><h2 id="sectionTitle">Choose your application</h2></div><div class="progress"><span id="progressBar"></span></div></header>
       <div class="setup-warning" id="applySetupWarning" hidden><strong>APPLICATION DATABASE NOT CONNECTED</strong><p>The form is visible, but submissions require the Vercel database setup described in the included setup guide.</p></div>
       <form id="applicationForm" novalidate>
+          <div class="website-field" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>
         <section class="form-step active" data-step="1">
           <p class="step-intro">Select the pathway that best matches how you want to join Blackstone RP.</p>
           <div class="role-grid">
@@ -100,6 +101,6 @@
 
   <div class="success-modal" id="successModal" aria-hidden="true"><div><img decoding="async" src="assets/blackstone-logo.webp" width="768" height="768" alt="" /><span>APPLICATION RECEIVED</span><h2>YOUR STORY STARTS HERE.</h2><p>Your application has been securely submitted to the Blackstone RP staff panel.</p><strong id="applicationId"></strong><a href="portal.html" class="button primary">Open Community Hub</a></div></div>
 
-  <script src="apply.js?v=3"></script>
+  <script src="apply.js?v=4"></script>
 </body>
 </html>
