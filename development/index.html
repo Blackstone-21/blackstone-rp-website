@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08090b">
+  <meta name="description" content="Blackstone Development FiveM scripts, documentation, updates and support.">
+  <meta name="robots" content="index,follow">
+  <title>Blackstone Development | FiveM Scripts</title>
+  <link rel="icon" href="../assets/blackstone-favicon.png">
+  <link rel="preload" href="../assets/blackstone-logo.webp" as="image" type="image/webp">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./catalog.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" id="siteHeader">
+    <div class="header-shell">
+      <a class="brand" href="./" aria-label="Blackstone Development home">
+        <img src="../assets/blackstone-logo.webp" alt="" width="58" height="58">
+        <span class="brand-copy">
+          <strong>BLACKSTONE</strong>
+          <small>DEVELOPMENT</small>
+        </span>
+      </a>
+
+      <button class="mobile-menu" id="mobileMenu" type="button" aria-expanded="false" aria-controls="mainNav">
+        <span></span><span></span><span></span>
+        <span class="sr-only">Open navigation</span>
+      </button>
+
+      <nav class="main-nav" id="mainNav" aria-label="Development navigation">
+        <button class="nav-link is-active" type="button" data-view-target="home">Home</button>
+        <button class="nav-link" type="button" data-view-target="products">Products</button>
+        <button class="nav-link" type="button" data-view-target="docs">Documentation</button>
+        <button class="nav-link" type="button" data-view-target="updates">Updates</button>
+        <button class="nav-link" type="button" data-view-target="support">Support</button>
+        <a class="nav-link nav-link-external" href="../">Roleplay Site</a>
+      </nav>
+
+      <a class="header-store-button" href="https://blackstone-rp-development.tebex.store" target="_blank" rel="noopener noreferrer">
+        Open Store
+        <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="view is-active" data-view="home" aria-labelledby="homeTitle">
+      <div class="hero">
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div class="hero-glow hero-glow-one" aria-hidden="true"></div>
+        <div class="hero-glow hero-glow-two" aria-hidden="true"></div>
+
+        <div class="hero-shell">
+          <div class="hero-copy">
+            <p class="eyebrow"><span></span> FiveM resources built for serious servers</p>
+            <h1 id="homeTitle">BUILD BETTER.<br><em>RUN SMOOTHER.</em></h1>
+            <p class="hero-lead">
+              Optimised FiveM scripts, detailed documentation and direct support from
+              Blackstone Development—all connected to the official Tebex store.
+            </p>
+
+            <div class="hero-actions">
+              <button class="button button-primary" type="button" data-view-target="products">
+                Browse Products
+                <span aria-hidden="true">→</span>
+              </button>
+              <button class="button button-secondary" type="button" data-view-target="docs">
+                Read Documentation
+              </button>
+            </div>
+
+            <div class="hero-proof" aria-label="Store highlights">
+              <div>
+                <strong id="heroProductCount">—</strong>
+                <span>Products</span>
+              </div>
+              <div>
+                <strong>QBCORE</strong>
+                <span>Primary Framework</span>
+              </div>
+              <div>
+                <strong>AU</strong>
+                <span>Developer Support</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-panel">
+            <div class="terminal-top">
+              <span></span><span></span><span></span>
+              <p>BLACKSTONE RESOURCE STATUS</p>
+            </div>
+            <div class="terminal-body">
+              <div class="terminal-brand">
+                <img src="../assets/blackstone-logo.webp" alt="Blackstone Development logo" width="126" height="126">
+                <div>
+                  <small>OFFICIAL DEVELOPMENT STORE</small>
+                  <strong>BLACKSTONE</strong>
+                  <span>FIVEM CONTENT &amp; SCRIPTS</span>
+                </div>
+              </div>
+              <div class="status-line">
+                <span class="status-dot"></span>
+                <p>
+                  <strong id="syncLabel">CONNECTING TO CATALOGUE</strong>
+                  <small id="syncDetail">Loading the latest website and Tebex products.</small>
+                </p>
+              </div>
+              <div class="terminal-stats">
+                <div><span>CATALOGUE</span><strong id="terminalCatalogue">LOADING</strong></div>
+                <div><span>STORE</span><strong>TEBEX</strong></div>
+                <div><span>DELIVERY</span><strong>AUTOMATIC</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow"><span></span> Featured resources</p>
+            <h2>BUILT FOR REAL SERVERS.</h2>
+          </div>
+          <button class="text-button" type="button" data-view-target="products">View all products <span>→</span></button>
+        </div>
+        <div class="product-grid product-grid-featured" id="featuredGrid" aria-live="polite"></div>
+      </section>
+
+      <section class="content-section content-section-dark">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow"><span></span> Why Blackstone</p>
+            <h2>MORE THAN A DOWNLOAD.</h2>
+          </div>
+        </div>
+        <div class="benefit-grid">
+          <article class="benefit-card">
+            <span class="benefit-number">01</span>
+            <div class="benefit-icon" aria-hidden="true">⌁</div>
+            <h3>Performance First</h3>
+            <p>Resources are designed around clean event handling, sensible loops and practical server performance.</p>
+          </article>
+          <article class="benefit-card">
+            <span class="benefit-number">02</span>
+            <div class="benefit-icon" aria-hidden="true">▤</div>
+            <h3>Clear Documentation</h3>
+            <p>Installation, dependencies, configuration, troubleshooting and update notes are kept together.</p>
+          </article>
+          <article class="benefit-card">
+            <span class="benefit-number">03</span>
+            <div class="benefit-icon" aria-hidden="true">◎</div>
+            <h3>Direct Support</h3>
+            <p>Use the guided support form to prepare the details staff need before opening a Discord ticket.</p>
+          </article>
+          <article class="benefit-card">
+            <span class="benefit-number">04</span>
+            <div class="benefit-icon" aria-hidden="true">⬡</div>
+            <h3>Secure Delivery</h3>
+            <p>Purchases remain on the official Tebex store for entitlement and protected resource delivery.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow"><span></span> Product bundles</p>
+            <h2>BUILD A COMPLETE SERVER.</h2>
+          </div>
+        </div>
+        <div class="bundle-grid" id="bundleGrid"></div>
+      </section>
+
+      <section class="content-section trust-section">
+        <div class="trust-copy">
+          <p class="eyebrow"><span></span> Transparent customer feedback</p>
+          <h2>VERIFIED REVIEWS.<br>NO MADE-UP RATINGS.</h2>
+          <p>
+            This hub is prepared for verified-purchase reviews. Reviews remain empty until
+            a purchase-verification backend is connected, so customers never see fabricated feedback.
+          </p>
+        </div>
+        <div class="review-panel" id="reviewPanel">
+          <div class="empty-icon" aria-hidden="true">★</div>
+          <strong>No verified reviews yet</strong>
+          <p>Verified Tebex purchase reviews will appear here when the review service is enabled.</p>
+        </div>
+      </section>
+
+      <section class="cta-section">
+        <div>
+          <p class="eyebrow"><span></span> Official Blackstone store</p>
+          <h2>READY TO UPGRADE<br>YOUR SERVER?</h2>
+        </div>
+        <a class="button button-light" href="https://blackstone-rp-development.tebex.store" target="_blank" rel="noopener noreferrer">
+          Visit Tebex Store <span aria-hidden="true">↗</span>
+        </a>
+      </section>
+    </section>
+
+    <section class="view" data-view="products" aria-labelledby="productsTitle">
+      <div class="page-hero">
+        <p class="eyebrow"><span></span> Blackstone catalogue</p>
+        <h1 id="productsTitle">PRODUCTS.</h1>
+        <p>Search scripts, check compatibility and open the official Tebex package page.</p>
+      </div>
+
+      <section class="content-section catalogue-section">
+        <div class="catalogue-toolbar">
+          <label class="search-field">
+            <span class="sr-only">Search products</span>
+            <span aria-hidden="true">⌕</span>
+            <input id="productSearch" type="search" placeholder="Search products, features or frameworks" autocomplete="off">
+          </label>
+
+          <div class="filter-scroll" id="productFilters" aria-label="Product filters">
+            <button class="filter-chip is-active" type="button" data-filter="all">All</button>
+            <button class="filter-chip" type="button" data-filter="QBCore">QBCore</button>
+            <button class="filter-chip" type="button" data-filter="Qbox">Qbox</button>
+            <button class="filter-chip" type="button" data-filter="ESX">ESX</button>
+            <button class="filter-chip" type="button" data-filter="Standalone">Standalone</button>
+            <button class="filter-chip" type="button" data-filter="Free">Free</button>
+            <button class="filter-chip" type="button" data-filter="Coming Soon">Coming Soon</button>
+          </div>
+
+          <label class="sort-field">
+            <span class="sr-only">Sort products</span>
+            <select id="productSort">
+              <option value="featured">Featured first</option>
+              <option value="name">Name A–Z</option>
+              <option value="price-low">Price low–high</option>
+              <option value="price-high">Price high–low</option>
+              <option value="updated">Recently updated</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="catalogue-summary">
+          <p id="catalogueSummary">Loading products…</p>
+          <a href="https://blackstone-rp-development.tebex.store" target="_blank" rel="noopener noreferrer">Open full Tebex store ↗</a>
+        </div>
+
+        <div class="product-grid" id="productGrid" aria-live="polite"></div>
+        <div class="empty-state is-hidden" id="productEmpty">
+          <div class="empty-icon" aria-hidden="true">⌕</div>
+          <h2>No matching products</h2>
+          <p>Try another search or remove a compatibility filter.</p>
+          <button class="button button-secondary" id="clearProductFilters" type="button">Clear filters</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" data-view="docs" aria-labelledby="docsTitle">
+      <div class="page-hero">
+        <p class="eyebrow"><span></span> Installation and configuration</p>
+        <h1 id="docsTitle">DOCUMENTATION.</h1>
+        <p>Find setup steps, dependencies, configuration details and troubleshooting information.</p>
+      </div>
+
+      <section class="content-section docs-layout">
+        <aside class="docs-sidebar">
+          <label class="search-field docs-search">
+            <span aria-hidden="true">⌕</span>
+            <input id="docsSearch" type="search" placeholder="Search documentation" autocomplete="off">
+          </label>
+          <nav id="docsNav" aria-label="Documentation products"></nav>
+        </aside>
+
+        <article class="docs-content" id="docsContent" aria-live="polite">
+          <div class="docs-welcome">
+            <span class="docs-kicker">BLACKSTONE DOCUMENTATION CENTRE</span>
+            <h2>SELECT A PRODUCT GUIDE.</h2>
+            <p>Choose a resource from the documentation list to view its installation and configuration guide.</p>
+          </div>
+        </article>
+      </section>
+    </section>
+
+    <section class="view" data-view="updates" aria-labelledby="updatesTitle">
+      <div class="page-hero">
+        <p class="eyebrow"><span></span> Product development history</p>
+        <h1 id="updatesTitle">UPDATES.</h1>
+        <p>Version notes, fixes, compatibility work and important product changes.</p>
+      </div>
+
+      <section class="content-section">
+        <div class="updates-toolbar">
+          <label class="search-field">
+            <span aria-hidden="true">⌕</span>
+            <input id="updatesSearch" type="search" placeholder="Search product updates" autocomplete="off">
+          </label>
+          <p id="updatesCount"></p>
+        </div>
+        <div class="updates-list" id="updatesList"></div>
+      </section>
+    </section>
+
+    <section class="view" data-view="support" aria-labelledby="supportTitle">
+      <div class="page-hero">
+        <p class="eyebrow"><span></span> Direct customer assistance</p>
+        <h1 id="supportTitle">SUPPORT.</h1>
+        <p>Prepare a complete support report before opening a ticket in the Blackstone Discord.</p>
+      </div>
+
+      <section class="content-section support-layout">
+        <div class="support-options">
+          <article class="support-option">
+            <span>01</span>
+            <h2>Installation Help</h2>
+            <p>Get help with dependencies, SQL, configuration, resource order or initial setup.</p>
+            <button type="button" class="text-button support-type-button" data-support-type="Installation Help">Prepare request →</button>
+          </article>
+          <article class="support-option">
+            <span>02</span>
+            <h2>Bug Report</h2>
+            <p>Provide reproduction steps, errors and server details so the problem can be investigated.</p>
+            <button type="button" class="text-button support-type-button" data-support-type="Bug Report">Prepare report →</button>
+          </article>
+          <article class="support-option">
+            <span>03</span>
+            <h2>Feature Request</h2>
+            <p>Suggest an improvement while explaining the gameplay or administration problem it solves.</p>
+            <button type="button" class="text-button support-type-button" data-support-type="Feature Request">Prepare request →</button>
+          </article>
+          <article class="support-option">
+            <span>04</span>
+            <h2>Purchase Help</h2>
+            <p>Use your Tebex transaction ID for entitlement, delivery or package-access questions.</p>
+            <button type="button" class="text-button support-type-button" data-support-type="Purchase Help">Prepare request →</button>
+          </article>
+        </div>
+
+        <form class="support-form" id="supportForm">
+          <div class="form-heading">
+            <p class="eyebrow"><span></span> Ticket builder</p>
+            <h2>PREPARE YOUR REQUEST.</h2>
+            <p>This form creates a support message on your device. It does not send private details to the website.</p>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              Request type
+              <select id="supportType" required>
+                <option value="Installation Help">Installation Help</option>
+                <option value="Bug Report">Bug Report</option>
+                <option value="Feature Request">Feature Request</option>
+                <option value="Purchase Help">Purchase Help</option>
+              </select>
+            </label>
+
+            <label>
+              Product
+              <select id="supportProduct" required></select>
+            </label>
+
+            <label>
+              Framework
+              <select id="supportFramework">
+                <option value="QBCore">QBCore</option>
+                <option value="Qbox">Qbox</option>
+                <option value="ESX">ESX</option>
+                <option value="Standalone">Standalone</option>
+                <option value="Other / Unsure">Other / Unsure</option>
+              </select>
+            </label>
+
+            <label>
+              Product version
+              <input id="supportVersion" type="text" placeholder="Example: 1.2.0">
+            </label>
+
+            <label class="form-wide">
+              Tebex transaction ID <span>(purchase help only)</span>
+              <input id="supportTransaction" type="text" placeholder="Do not enter passwords or payment-card details">
+            </label>
+
+            <label class="form-wide">
+              What happened or what do you need?
+              <textarea id="supportDescription" rows="6" required placeholder="Include expected behaviour, actual behaviour and any steps already tried."></textarea>
+            </label>
+
+            <label class="form-wide">
+              Relevant error message
+              <textarea id="supportError" rows="4" placeholder="Paste only the error. Remove private keys, tokens, IP addresses or passwords."></textarea>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">Generate Support Message</button>
+            <a class="button button-secondary" href="https://discord.gg/bqHJqCFC7E" target="_blank" rel="noopener noreferrer">Open Discord ↗</a>
+          </div>
+
+          <section class="generated-ticket is-hidden" id="generatedTicket" aria-live="polite">
+            <div>
+              <strong>Your support message is ready</strong>
+              <button id="copyTicket" type="button">Copy message</button>
+            </div>
+            <pre id="ticketOutput"></pre>
+          </section>
+        </form>
+      </section>
+
+      <section class="content-section faq-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow"><span></span> Common questions</p>
+            <h2>SUPPORT FAQ.</h2>
+          </div>
+        </div>
+        <div class="faq-list" id="faqList"></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="product-dialog" id="productDialog" aria-labelledby="dialogTitle">
+    <div class="dialog-shell">
+      <button class="dialog-close" id="dialogClose" type="button" aria-label="Close product details">×</button>
+      <div id="dialogContent"></div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <img src="../assets/blackstone-logo.webp" alt="" width="52" height="52">
+      <div><strong>BLACKSTONE DEVELOPMENT</strong><span>FiveM content and scripts</span></div>
+    </div>
+    <div class="footer-links">
+      <button type="button" data-view-target="products">Products</button>
+      <button type="button" data-view-target="docs">Documentation</button>
+      <button type="button" data-view-target="updates">Updates</button>
+      <button type="button" data-view-target="support">Support</button>
+      <a href="../privacy.html">Privacy</a>
+      <a href="../terms.html">Terms</a>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Blackstone Development. All rights reserved.</p>
+      <p>Payments and protected resource delivery are handled by Tebex.</p>
+    </div>
+  </footer>
+
+  <noscript>
+    <div class="noscript">JavaScript is required to load the product catalogue and documentation.</div>
+  </noscript>
+</body>
+</html>
