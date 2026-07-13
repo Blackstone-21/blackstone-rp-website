@@ -154,6 +154,8 @@
   // Public shop. Products are created and maintained in the admin panel.
   const shopGrid = $('#shopGrid');
   const shopStatus = $('#shopStatus');
+  const tebexStoreBar = $('#tebexStoreBar');
+  const tebexStoreLink = $('#tebexStoreLink');
   let shopLoaded = false;
 
   function safeHttpsUrl(value) {
@@ -226,7 +228,13 @@
     return card;
   }
 
-  function renderShop(items, configured = true) {
+  function renderShop(items, configured = true, settings = {}) {
+    const tebexUrl = safeHttpsUrl(settings?.tebexStoreUrl);
+    const tebexEnabled = settings?.tebexEnabled !== false && Boolean(tebexUrl);
+    if (tebexStoreBar && tebexStoreLink) {
+      tebexStoreBar.hidden = !tebexEnabled;
+      if (tebexEnabled) tebexStoreLink.href = tebexUrl;
+    }
     if (!shopGrid) return;
     const list = Array.isArray(items) ? items : [];
     shopGrid.replaceChildren();
@@ -266,7 +274,7 @@
       });
       if (!response.ok) throw new Error(`Shop request failed (${response.status}).`);
       const payload = await response.json();
-      renderShop(payload.shop, payload.configured !== false);
+      renderShop(payload.shop, payload.configured !== false, payload.settings || {});
     } catch (error) {
       console.warn('Blackstone RP shop update failed:', error);
       shopLoaded = false;

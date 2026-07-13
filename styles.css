@@ -3303,3 +3303,8 @@ body.gallery-modal-open {
 @media (prefers-reduced-motion: reduce) {
   .cursor-glow { display: none !important; }
 }
+
+/* Tebex store integration */
+.tebex-store-bar{max-width:1180px;margin:0 auto 22px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:24px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.035);backdrop-filter:blur(12px)}
+.tebex-store-bar[hidden]{display:none!important}.tebex-store-bar div{display:grid;gap:4px}.tebex-store-bar span{font-size:.68rem;letter-spacing:.18em;color:#9aa6b5}.tebex-store-bar strong{font-size:1rem;letter-spacing:.04em}.tebex-store-bar a{white-space:nowrap;padding:12px 16px;border:1px solid rgba(255,255,255,.28);text-decoration:none;color:#fff;font-size:.72rem;letter-spacing:.12em;transition:background .2s ease,transform .2s ease}.tebex-store-bar a:hover{background:#fff;color:#080a0d;transform:translateY(-1px)}
+@media(max-width:700px){.tebex-store-bar{align-items:flex-start;flex-direction:column}.tebex-store-bar a{width:100%;text-align:center}}

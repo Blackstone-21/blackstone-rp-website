@@ -98,7 +98,7 @@
 
         <section class="admin-view" id="settingsView">
           <div class="settings-grid">
-            <form class="settings-card" id="communitySettingsForm"><header><span>PUBLIC CONFIGURATION</span><h2>Community Settings</h2></header><label><span>Community name</span><input type="text" name="communityName" /></label><label><span>Server endpoint</span><input type="text" name="serverEndpoint" /></label><label><span>FiveM join URL</span><input type="url" name="joinUrl" /></label><label><span>Discord invite URL</span><input type="url" name="discordUrl" /></label><label><span>Discord gallery channel ID</span><input type="text" name="galleryChannelId" /></label><label class="check-field"><input type="checkbox" name="applicationsOpen" /><span>Applications are open</span></label><button class="admin-button primary" type="submit">Save Settings</button></form>
+            <form class="settings-card" id="communitySettingsForm"><header><span>PUBLIC CONFIGURATION</span><h2>Community Settings</h2></header><label><span>Community name</span><input type="text" name="communityName" /></label><label><span>Server endpoint</span><input type="text" name="serverEndpoint" /></label><label><span>FiveM join URL</span><input type="url" name="joinUrl" /></label><label><span>Discord invite URL</span><input type="url" name="discordUrl" /></label><label><span>Discord gallery channel ID</span><input type="text" name="galleryChannelId" /></label><label><span>Tebex store URL</span><input type="url" name="tebexStoreUrl" placeholder="https://your-store.tebex.io" /></label><label class="check-field"><input type="checkbox" name="tebexEnabled" /><span>Show Tebex store on the website</span></label><label class="check-field"><input type="checkbox" name="applicationsOpen" /><span>Applications are open</span></label><p><a href="https://creator.tebex.io" target="_blank" rel="noopener noreferrer">Open Tebex Creator Panel ↗</a> to add packages, prices and checkout settings.</p><button class="admin-button primary" type="submit">Save Settings</button></form>
             <form class="settings-card" id="passwordForm"><header><span>ACCOUNT SECURITY</span><h2>Change Password</h2></header><label><span>Current password</span><input type="password" name="currentPassword" autocomplete="current-password" required /></label><label><span>New password</span><input type="password" name="newPassword" autocomplete="new-password" minlength="10" required /></label><label><span>Confirm new password</span><input type="password" name="confirmPassword" autocomplete="new-password" minlength="10" required /></label><p class="settings-message" id="passwordMessage"></p><button class="admin-button primary" type="submit">Update Password</button></form>
             <article class="settings-card danger-card"><header><span>DATA MANAGEMENT</span><h2>Export Admin Data</h2></header><p>Download a JSON copy of members, content, applications, roles, settings and audit history. Password hashes are excluded.</p><button type="button" class="admin-button secondary" id="exportAll">Download Full Export</button></article>
           </div>
@@ -116,6 +116,6 @@
   </div>
 
   <div class="toast" id="adminToast"></div>
-  <script src="admin.js?v=6"></script>
+  <script src="admin.js?v=7"></script>
 </body>
 </html>

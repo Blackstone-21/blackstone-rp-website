@@ -112,7 +112,7 @@
         {name:'buttonLabel',label:'Purchase button label',default:'View Item'},
         {name:'description',label:'Item description',type:'textarea',full:true},
         {name:'imageUrl',label:'HTTPS image URL',type:'url',full:true,help:'Optional. Leave blank to use the Blackstone logo.'},
-        {name:'purchaseUrl',label:'HTTPS purchase / information URL',type:'url',full:true,help:'The public button opens this address in a new tab.'},
+        {name:'purchaseUrl',label:'Tebex package / purchase URL',type:'url',full:true,help:'Paste the HTTPS link to the package in your Tebex store.'},
         {name:'sortOrder',label:'Sort order',type:'number'},
         {name:'featured',label:'Featured item',type:'checkbox'},
         {name:'soldOut',label:'Sold out',type:'checkbox'},
@@ -326,7 +326,7 @@
   $('#syncDiscord').addEventListener('click',async()=>{const button=$('#syncDiscord');button.disabled=true;button.textContent='Syncing…';$('#discordResult').textContent='Connecting to Discord, importing members and preserving manual role assignments…';try{const data=await api('discord-sync',{method:'POST'});$('#discordResult').textContent=JSON.stringify(data.result,null,2);toast('Discord sync complete')}catch(error){$('#discordResult').textContent=error.message;toast('Discord sync failed')}finally{button.disabled=false;button.textContent='Run Discord Sync'}});
 
   async function loadSettings(){try{const data=await api('admin-list',{query:{entity:'settings'}});const settings=data.items||{};const form=$('#communitySettingsForm');Object.entries(settings).forEach(([key,value])=>{const control=form.elements[key];if(!control)return;if(control.type==='checkbox')control.checked=Boolean(value);else control.value=value??''})}catch(error){toast(error.message)}}
-  $('#communitySettingsForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;const item=Object.fromEntries(new FormData(form));item.applicationsOpen=form.elements.applicationsOpen.checked;try{await api('admin-save',{method:'POST',body:{entity:'settings',item}});toast('Settings saved')}catch(error){toast(error.message)}});
+  $('#communitySettingsForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;const item=Object.fromEntries(new FormData(form));item.applicationsOpen=form.elements.applicationsOpen.checked;item.tebexEnabled=form.elements.tebexEnabled.checked;try{await api('admin-save',{method:'POST',body:{entity:'settings',item}});toast('Settings saved')}catch(error){toast(error.message)}});
   $('#passwordForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;const data=Object.fromEntries(new FormData(form));const message=$('#passwordMessage');if(data.newPassword!==data.confirmPassword){message.textContent='New passwords do not match.';return}try{const result=await api('change-password',{method:'POST',body:{currentPassword:data.currentPassword,newPassword:data.newPassword}});form.reset();if(result.reauthenticate){leaveApp();$('#adminLoginMessage').textContent='Password updated. Sign in again with your new password.'}else{message.textContent='Password updated successfully.'}}catch(error){message.textContent=error.message}});
   $('#exportAll').addEventListener('click',async()=>{try{const data=await api('admin-export');download(`blackstone-admin-export-${new Date().toISOString().slice(0,10)}.json`,data);toast('Export downloaded')}catch(error){toast(error.message)}});
 

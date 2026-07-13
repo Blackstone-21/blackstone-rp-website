@@ -498,6 +498,8 @@ function defaultData() {
       joinUrl: 'https://cfx.re/join/4xlaj5',
       discordUrl: 'https://discord.gg/bqHJqCFC7E',
       galleryChannelId: '1520414735772811394',
+      tebexStoreUrl: '',
+      tebexEnabled: false,
       applicationsOpen: true,
       updatedAt: createdAt
     }
@@ -1111,6 +1113,8 @@ function sanitizeEntityItem(entity, input, existing = null) {
       joinUrl: safeUrl(input.joinUrl || base.joinUrl, { message: 'The FiveM join URL must be a secure HTTPS address.' }),
       discordUrl: safeUrl(input.discordUrl || base.discordUrl, { hosts: ['discord.gg', 'discord.com', 'www.discord.com'], message: 'The Discord invite must use discord.gg or discord.com.' }),
       galleryChannelId: cleanText(input.galleryChannelId || base.galleryChannelId, 30),
+      tebexStoreUrl: safeUrl(input.tebexStoreUrl || base.tebexStoreUrl, { message: 'The Tebex store URL must use HTTPS.' }),
+      tebexEnabled: bool(input.tebexEnabled, false),
       applicationsOpen: bool(input.applicationsOpen, true),
       updatedAt: timestamp
     };
