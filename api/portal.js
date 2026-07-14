@@ -31,7 +31,7 @@ const RETRY_INTERVAL_MS = 60 * 1000;
 const TEBEX_TIMEOUT_MS = 8000;
 const REDIS_TIMEOUT_MS = 5000;
 const MAX_SYNCED_PRODUCTS = 250;
-const IMAGE_SYNC_SCHEMA_VERSION = 2;
+const IMAGE_SYNC_SCHEMA_VERSION = 3;
 
 let localNextSyncAt = 0;
 let activeSyncPromise = null;
@@ -1034,32 +1034,13 @@ async function performTebexSync(env) {
       storeUrl
     );
 
-    const allowEmpty = !isFalse(
-      env.TEBEX_SYNC_ALLOW_EMPTY
-    );
-
-    if (
-      syncedProducts.length === 0 &&
+    // Tebex is the source of truth for the Development catalogue.
+    // An empty published catalogue clears the website unless the owner
+    // explicitly sets TEBEX_SYNC_ALLOW_EMPTY=false in Vercel.
+    const allowEmpty =
       env.TEBEX_SYNC_ALLOW_EMPTY === undefined
-    ) {
-      // Safe default while a new Tebex store is being reviewed:
-      // retain existing products instead of replacing them with an empty list.
-      await redisCommand(env, [
-        'SET',
-        SYNC_META_KEY,
-        JSON.stringify({
-          status: 'waiting',
-          schemaVersion: IMAGE_SYNC_SCHEMA_VERSION,
-          productCount: 0,
-          checkedAt: new Date().toISOString(),
-          message:
-            'Tebex returned no public packages. Existing website products were retained.'
-        })
-      ]);
-
-      localNextSyncAt = now + RETRY_INTERVAL_MS;
-      return;
-    }
+        ? true
+        : !isFalse(env.TEBEX_SYNC_ALLOW_EMPTY);
 
     if (syncedProducts.length === 0 && !allowEmpty) {
       localNextSyncAt = now + RETRY_INTERVAL_MS;
@@ -1071,10 +1052,21 @@ async function performTebexSync(env) {
       []
     );
 
-    const mergedShop = mergeWithExistingShop(
-      existingShop,
-      syncedProducts
+    // Do not retain products that no longer exist in Tebex.
+    const previousById = new Map(
+      (Array.isArray(existingShop) ? existingShop : [])
+        .map((item) => [String(item?.id || ''), item])
     );
+
+    const mergedShop = syncedProducts.map((item, index) => {
+      const previous = previousById.get(String(item.id));
+
+      return {
+        ...item,
+        sortOrder: index,
+        createdAt: previous?.createdAt || item.createdAt
+      };
+    });
 
     const syncedAt = new Date().toISOString();
 

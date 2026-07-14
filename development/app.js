@@ -180,54 +180,65 @@
   }
 
   function mergeCatalogue(liveProducts) {
-    const matchedProfiles = new Set();
-    const merged = liveProducts
+    return liveProducts
       .filter((product) => product.published)
       .map((liveProduct) => {
         const profile = findProfile(liveProduct);
-        if (profile) matchedProfiles.add(profile.slug);
+
         return {
           ...(profile || genericProfile(liveProduct)),
           ...liveProduct,
           slug: profile?.slug || liveProduct.slug,
-          frameworks: profile?.frameworks || inferFrameworks(liveProduct),
-          dependencies: profile?.dependencies || ["See package documentation"],
+          frameworks:
+            profile?.frameworks ||
+            inferFrameworks(liveProduct),
+          dependencies:
+            profile?.dependencies ||
+            ["See package documentation"],
           tags: profile?.tags || [],
           version: profile?.version || "Current",
-          updatedAt: liveProduct.updatedAt || profile?.updatedAt || "",
-          status: liveProduct.soldOut ? "Sold Out" : profile?.status || (liveProduct.featured ? "Featured" : "Available"),
-          performance: profile?.performance || "Designed with practical FiveM server performance in mind.",
-          installationDifficulty: profile?.installationDifficulty || "See Documentation",
-          features: profile?.features || ["Full package details are available on the official Tebex listing."],
-          installation: profile?.installation || ["Follow the installation files included with the purchased package."],
-          configuration: profile?.configuration || ["See the package configuration file and documentation."],
-          troubleshooting: profile?.troubleshooting || ["Copy the full server or client console error before opening a support ticket."],
+          updatedAt:
+            liveProduct.updatedAt ||
+            profile?.updatedAt ||
+            "",
+          status: liveProduct.soldOut
+            ? "Sold Out"
+            : liveProduct.featured
+              ? "Featured"
+              : profile?.status === "New"
+                ? "New"
+                : "Available",
+          performance:
+            profile?.performance ||
+            "Designed with practical FiveM server performance in mind.",
+          installationDifficulty:
+            profile?.installationDifficulty ||
+            "See Documentation",
+          features:
+            profile?.features ||
+            [
+              "Full package details are available on the official Tebex listing."
+            ],
+          installation:
+            profile?.installation ||
+            [
+              "Follow the installation files included with the purchased package."
+            ],
+          configuration:
+            profile?.configuration ||
+            [
+              "See the package configuration file and documentation."
+            ],
+          troubleshooting:
+            profile?.troubleshooting ||
+            [
+              "Copy the full server or client console error before opening a support ticket."
+            ],
           changelog: profile?.changelog || [],
           comingSoon: false,
           isLive: true
         };
       });
-
-    for (const profile of config.products) {
-      if (matchedProfiles.has(profile.slug)) continue;
-      merged.push({
-        ...profile,
-        id: profile.slug,
-        imageUrl: "",
-        mediaUrls: [],
-        priceLabel: profile.status === "Coming Soon" ? "Coming Soon" : "View Store",
-        purchaseUrl: config.brand.storeUrl,
-        soldOut: false,
-        featured: profile.status === "New",
-        published: true,
-        source: "profile",
-        buttonLabel: profile.status === "Coming Soon" ? "View Preview" : "View Details",
-        comingSoon: profile.status === "Coming Soon",
-        isLive: false
-      });
-    }
-
-    return merged;
   }
 
   function genericProfile(liveProduct) {
@@ -320,13 +331,13 @@
     if (connected) {
       elements.syncLabel.textContent = liveCount ? "CATALOGUE CONNECTED" : "STORE REVIEW / SYNC PENDING";
       elements.syncDetail.textContent = liveCount
-        ? `${liveCount} live website product${liveCount === 1 ? "" : "s"} loaded.`
-        : "Prepared product profiles are displayed until Tebex listings become public.";
+        ? `${liveCount} live Tebex product${liveCount === 1 ? "" : "s"} loaded.`
+        : "No published Tebex products are currently available.";
       elements.terminalCatalogue.textContent = liveCount ? "ONLINE" : "PREVIEW";
     } else {
-      elements.syncLabel.textContent = "CATALOGUE PREVIEW MODE";
-      elements.syncDetail.textContent = "The public API could not be reached, so prepared product profiles are displayed.";
-      elements.terminalCatalogue.textContent = "PREVIEW";
+      elements.syncLabel.textContent = "CATALOGUE TEMPORARILY UNAVAILABLE";
+      elements.syncDetail.textContent = "The live Tebex catalogue could not be reached. No preview products are being shown.";
+      elements.terminalCatalogue.textContent = "OFFLINE";
     }
   }
 
@@ -388,12 +399,37 @@
     const featured = [...state.products]
       .sort((a, b) => Number(b.featured) - Number(a.featured))
       .slice(0, 3);
-    elements.featuredGrid.innerHTML = featured.map(productCard).join("");
+
+    const section =
+      elements.featuredGrid.closest(".content-section");
+
+    if (section) section.hidden = featured.length === 0;
+
+    elements.featuredGrid.innerHTML =
+      featured.map(productCard).join("");
+
     attachImageFallbacks(elements.featuredGrid);
   }
 
   function renderBundles() {
-    elements.bundleGrid.innerHTML = config.bundles.map((bundle) => `
+    const liveTitles = new Set(
+      state.products.map((product) =>
+        product.title.trim().toLowerCase()
+      )
+    );
+
+    const bundles = config.bundles.filter((bundle) =>
+      bundle.products.every((productName) =>
+        liveTitles.has(productName.trim().toLowerCase())
+      )
+    );
+
+    const section =
+      elements.bundleGrid.closest(".content-section");
+
+    if (section) section.hidden = bundles.length === 0;
+
+    elements.bundleGrid.innerHTML = bundles.map((bundle) => `
       <article class="bundle-card">
         <small>${escapeHtml(bundle.status)}</small>
         <h3>${escapeHtml(bundle.title)}</h3>
@@ -404,7 +440,7 @@
         <div class="bundle-bottom">
           <div class="bundle-status">
             <strong>${bundle.products.length} RESOURCES</strong>
-            <span>Bundle-ready catalogue</span>
+            <span>Available in the live Tebex catalogue</span>
           </div>
           <button class="card-button" type="button" data-view-target="${escapeHtml(bundle.targetView)}">${escapeHtml(bundle.actionLabel)} →</button>
         </div>

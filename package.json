@@ -1,6 +1,6 @@
 {
   "name": "blackstone-rp-website",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "private": true,
   "scripts": {
     "postinstall": "node build-blackstone-site.cjs",

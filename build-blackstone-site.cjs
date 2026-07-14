@@ -230,7 +230,7 @@ function updateDevelopment(source) {
   if (/premium-theme\.css\?v=\d+/.test(updated)) {
     updated = updated.replace(
       /premium-theme\.css\?v=\d+/g,
-      'premium-theme.css?v=4'
+      'premium-theme.css?v=5'
     );
   } else {
     updated = insertAfter(
@@ -288,7 +288,7 @@ function updateDevelopment(source) {
 
   updated = updated.replace(
     /app\.js(?:\?v=\d+)?/g,
-    'app.js?v=4'
+    'app.js?v=5'
   );
 
   return updated;

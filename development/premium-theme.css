@@ -184,3 +184,136 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* Development hero status panel refinement */
+.hero-shell {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(420px, 520px);
+  gap: clamp(42px, 5vw, 76px);
+}
+
+.hero-panel {
+  width: 100%;
+  max-width: 520px;
+  justify-self: end;
+  overflow: hidden;
+  transform: none;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.025),
+      transparent 42%
+    ),
+    #0a0c0e;
+  border-color: rgba(225, 229, 232, .24);
+  box-shadow:
+    0 32px 90px rgba(0,0,0,.55),
+    inset 0 1px rgba(255,255,255,.035);
+  isolation: isolate;
+}
+
+.terminal-body {
+  padding: clamp(26px, 3vw, 36px);
+}
+
+.terminal-brand {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  padding-bottom: 26px;
+}
+
+.terminal-brand img {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  align-self: center;
+}
+
+.terminal-brand > div {
+  min-width: 0;
+  gap: 5px;
+}
+
+.terminal-brand small {
+  overflow-wrap: anywhere;
+}
+
+.terminal-brand strong {
+  max-width: 100%;
+  min-width: 0;
+  font-size: clamp(1.9rem, 3vw, 2.75rem);
+  line-height: .9;
+  letter-spacing: -.025em;
+  white-space: nowrap;
+}
+
+.terminal-brand span {
+  overflow-wrap: anywhere;
+}
+
+.status-line {
+  position: relative;
+  z-index: 1;
+  padding: 22px 0;
+}
+
+.status-line p {
+  min-width: 0;
+}
+
+.status-line strong,
+.status-line small {
+  overflow-wrap: anywhere;
+}
+
+.terminal-stats {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 1280px) {
+  .hero-shell {
+    grid-template-columns: 1fr;
+    gap: 58px;
+  }
+
+  .hero-panel {
+    width: min(100%, 620px);
+    max-width: 620px;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 620px) {
+  .terminal-body {
+    padding: 22px;
+  }
+
+  .terminal-brand {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 15px;
+  }
+
+  .terminal-brand img {
+    width: 72px;
+    height: 72px;
+  }
+
+  .terminal-brand strong {
+    font-size: clamp(1.55rem, 8vw, 2rem);
+  }
+
+  .terminal-brand small {
+    font-size: .52rem;
+    letter-spacing: .1em;
+  }
+
+  .terminal-brand span {
+    font-size: .58rem;
+  }
+}
