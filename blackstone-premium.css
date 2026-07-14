@@ -1,14 +1,14 @@
 :root {
-  --bs-gold: #d4aa55;
-  --bs-gold-bright: #f2d48f;
-  --bs-gold-dark: #8e6a2d;
+  --bs-silver: #c8cdd2;
+  --bs-silver-bright: #f7f8f9;
+  --bs-silver-dark: #737a82;
   --bs-header: rgba(5, 6, 7, 0.96);
   --bs-panel: rgba(13, 15, 18, 0.92);
 }
 
 body {
   background:
-    radial-gradient(circle at 78% 8%, rgba(212, 170, 85, 0.055), transparent 28rem),
+    radial-gradient(circle at 78% 8%, rgba(214, 220, 226, 0.055), transparent 28rem),
     radial-gradient(circle at 8% 34%, rgba(255, 255, 255, 0.025), transparent 24rem),
     linear-gradient(180deg, #030405 0%, #090a0c 48%, #030405 100%);
 }
@@ -17,7 +17,7 @@ body {
   height: 104px;
   padding-inline: clamp(26px, 3.4vw, 72px);
   background:
-    linear-gradient(90deg, rgba(255,255,255,.018), transparent 28%, transparent 72%, rgba(212,170,85,.025)),
+    linear-gradient(90deg, rgba(255,255,255,.018), transparent 28%, transparent 72%, rgba(214,220,226,.025)),
     linear-gradient(180deg, rgba(4,5,6,.99), rgba(7,8,10,.95));
   border-top: 1px solid rgba(255,255,255,.08);
   border-bottom: 1px solid rgba(255,255,255,.14);
@@ -29,7 +29,7 @@ body {
   position: absolute;
   inset: auto 0 -1px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212,170,85,.34), transparent);
+  background: linear-gradient(90deg, transparent, rgba(214,220,226,.34), transparent);
   pointer-events: none;
 }
 
@@ -92,7 +92,7 @@ body {
   right: 50%;
   bottom: 2px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--bs-gold-bright), transparent);
+  background: linear-gradient(90deg, transparent, var(--bs-silver-bright), transparent);
   transition: left .22s ease, right .22s ease;
 }
 
@@ -106,15 +106,15 @@ body {
   margin-left: 12px;
   padding: 0 21px;
   gap: 9px;
-  color: var(--bs-gold-bright) !important;
-  border: 1px solid rgba(212,170,85,.52);
+  color: var(--bs-silver-bright) !important;
+  border: 1px solid rgba(214,220,226,.52);
   border-radius: 6px;
   background:
-    linear-gradient(135deg, rgba(212,170,85,.12), rgba(212,170,85,.02)),
+    linear-gradient(135deg, rgba(214,220,226,.12), rgba(214,220,226,.02)),
     rgba(255,255,255,.015);
   box-shadow:
     inset 0 1px rgba(255,255,255,.06),
-    0 0 30px rgba(212,170,85,.08);
+    0 0 30px rgba(214,220,226,.08);
 }
 
 .nav-development::before {
@@ -125,28 +125,28 @@ body {
 }
 
 .nav-development:hover {
-  background: linear-gradient(135deg, rgba(212,170,85,.2), rgba(212,170,85,.05));
-  border-color: var(--bs-gold-bright);
+  background: linear-gradient(135deg, rgba(214,220,226,.2), rgba(214,220,226,.05));
+  border-color: var(--bs-silver-bright);
   transform: translateY(-1px);
 }
 
 .announcement-bar {
-  border-color: rgba(212,170,85,.22);
-  background: linear-gradient(90deg, rgba(212,170,85,.07), rgba(255,255,255,.018), rgba(212,170,85,.035));
+  border-color: rgba(214,220,226,.22);
+  background: linear-gradient(90deg, rgba(214,220,226,.07), rgba(255,255,255,.018), rgba(214,220,226,.035));
 }
 
 .announcement-bar a,
 .text-link,
 .shop-status {
-  color: var(--bs-gold-bright);
+  color: var(--bs-silver-bright);
 }
 
 .eyebrow i,
 .live-dot,
 .server-live-indicator,
 .status-dot {
-  background: linear-gradient(90deg, var(--bs-gold-bright), var(--bs-gold-dark));
-  box-shadow: 0 0 16px rgba(212,170,85,.35);
+  background: linear-gradient(90deg, var(--bs-silver-bright), var(--bs-silver-dark));
+  box-shadow: 0 0 16px rgba(214,220,226,.35);
 }
 
 .hero {
@@ -157,7 +157,7 @@ body {
 .section-heading h2 span,
 .trailer-content h2 span,
 .join-panel h2 span {
-  background: linear-gradient(120deg, #fff5d9 4%, #b98939 34%, #f3d38f 62%, #8e672a 96%);
+  background: linear-gradient(120deg, #ffffff 4%, #a5abb1 34%, #edf0f2 62%, #70777e 96%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -168,14 +168,14 @@ body {
 }
 
 .btn-primary {
-  color: #11100d;
-  background: linear-gradient(135deg, #fff0c8 0%, #c5943e 34%, #f1d38b 68%, #8f672b 100%);
-  border-color: #e5c576;
-  box-shadow: 0 14px 35px rgba(0,0,0,.46), 0 0 28px rgba(212,170,85,.08), inset 0 1px rgba(255,255,255,.75);
+  color: #08090a;
+  background: linear-gradient(135deg, #ffffff 0%, #a9afb5 34%, #eef1f3 68%, #737a81 100%);
+  border-color: #dce0e4;
+  box-shadow: 0 14px 35px rgba(0,0,0,.46), 0 0 28px rgba(214,220,226,.08), inset 0 1px rgba(255,255,255,.75);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 18px 46px rgba(0,0,0,.58), 0 0 30px rgba(212,170,85,.18);
+  box-shadow: 0 18px 46px rgba(0,0,0,.58), 0 0 30px rgba(214,220,226,.18);
 }
 
 .glass-card,
@@ -202,8 +202,8 @@ body {
 .staff-card:hover,
 .social-card:hover,
 .shop-card:hover {
-  border-color: rgba(212,170,85,.42);
-  box-shadow: 0 26px 70px rgba(0,0,0,.38), 0 0 32px rgba(212,170,85,.055);
+  border-color: rgba(214,220,226,.42);
+  box-shadow: 0 26px 70px rgba(0,0,0,.38), 0 0 32px rgba(214,220,226,.055);
 }
 
 .content-section {
@@ -228,13 +228,13 @@ body {
   border: 1px solid rgba(255,255,255,.13);
   border-radius: 8px;
   background:
-    linear-gradient(145deg, rgba(212,170,85,.055), transparent 52%),
+    linear-gradient(145deg, rgba(214,220,226,.055), transparent 52%),
     rgba(11,13,16,.9);
 }
 
 .rp-shop-types article > span {
   display: block;
-  color: var(--bs-gold-bright);
+  color: var(--bs-silver-bright);
   font-size: .62rem;
   font-weight: 900;
   letter-spacing: .15em;
@@ -254,16 +254,16 @@ body {
 }
 
 .tebex-store-bar {
-  border-color: rgba(212,170,85,.3);
-  background: linear-gradient(90deg, rgba(212,170,85,.08), rgba(255,255,255,.025));
+  border-color: rgba(214,220,226,.3);
+  background: linear-gradient(90deg, rgba(214,220,226,.08), rgba(255,255,255,.025));
 }
 
 .tebex-store-bar a {
-  color: var(--bs-gold-bright);
+  color: var(--bs-silver-bright);
 }
 
 footer {
-  border-top-color: rgba(212,170,85,.18);
+  border-top-color: rgba(214,220,226,.18);
 }
 
 @media (max-width: 1320px) {
@@ -354,4 +354,43 @@ footer {
   .rp-shop-types {
     grid-template-columns: 1fr;
   }
+}
+
+
+/* Silver finish */
+.nav-development,
+.btn-primary {
+  background-image:
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #aeb4ba 31%,
+      #f1f3f5 62%,
+      #747b82 100%
+    );
+}
+
+.nav-development {
+  color: #f8f9fa !important;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,.13),
+      rgba(176,183,190,.035)
+    ),
+    rgba(255,255,255,.015);
+}
+
+.nav-development::before {
+  color: #f7f8f9;
+}
+
+.rp-shop-types article {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(220,225,230,.065),
+      transparent 52%
+    ),
+    rgba(11,13,16,.9);
 }

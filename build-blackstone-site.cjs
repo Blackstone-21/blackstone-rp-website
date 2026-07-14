@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const root = process.cwd();
 const roleplayPath = path.join(root, 'index.html');
+const roleplayScriptPath = path.join(root, 'script.js');
 const developmentPath = path.join(root, 'development', 'index.html');
 
 function readRequired(filePath) {
@@ -31,11 +32,23 @@ function insertAfter(source, marker, addition, label) {
 function updateRoleplay(source) {
   let updated = source;
 
-  updated = insertAfter(
-    updated,
-    '<link rel="stylesheet" href="styles.css?v=12" />',
-    '  <link rel="stylesheet" href="blackstone-premium.css?v=2" />',
-    'the Roleplay stylesheet marker'
+  if (/blackstone-premium\.css\?v=\d+/.test(updated)) {
+    updated = updated.replace(
+      /blackstone-premium\.css\?v=\d+/g,
+      'blackstone-premium.css?v=3'
+    );
+  } else {
+    updated = insertAfter(
+      updated,
+      '<link rel="stylesheet" href="styles.css?v=12" />',
+      '  <link rel="stylesheet" href="blackstone-premium.css?v=3" />',
+      'the Roleplay stylesheet marker'
+    );
+  }
+
+  updated = updated.replace(
+    /script\.js\?v=\d+/g,
+    'script.js?v=13'
   );
 
   const developmentPlain = '<a href="development/">Development</a>';
@@ -126,15 +139,107 @@ function updateRoleplay(source) {
   return updated;
 }
 
+
+function updateRoleplayScript(source) {
+  let updated = source;
+
+  const helperMarker = '  function createShopCard(item) {';
+  const guardHelpers = `  function isDevelopmentTebexUrl(value) {
+    const safe = safeHttpsUrl(value);
+    if (!safe) return false;
+
+    try {
+      return new URL(safe).hostname.toLowerCase() ===
+        'blackstone-rp-development.tebex.store';
+    } catch {
+      return false;
+    }
+  }
+
+  function isDevelopmentShopItem(item) {
+    const id = String(item?.id || '').toLowerCase();
+    const source = String(item?.source || '').toLowerCase();
+
+    return (
+      source === 'tebex' ||
+      id.startsWith('tebex-') ||
+      isDevelopmentTebexUrl(item?.purchaseUrl)
+    );
+  }
+
+`;
+
+  if (!updated.includes('function isDevelopmentTebexUrl(value)')) {
+    if (!updated.includes(helperMarker)) {
+      throw new Error(
+        'Could not locate the Roleplay shop helper insertion point.'
+      );
+    }
+
+    updated = updated.replace(
+      helperMarker,
+      `${guardHelpers}${helperMarker}`
+    );
+  }
+
+  const oldTebexSettings = `    const tebexUrl = safeHttpsUrl(settings?.tebexStoreUrl);
+    const tebexEnabled = settings?.tebexEnabled !== false && Boolean(tebexUrl);`;
+
+  const newTebexSettings = `    const configuredTebexUrl = safeHttpsUrl(
+      settings?.tebexStoreUrl
+    );
+    const tebexUrl = isDevelopmentTebexUrl(
+      configuredTebexUrl
+    )
+      ? ''
+      : configuredTebexUrl;
+    const tebexEnabled =
+      settings?.tebexEnabled === true &&
+      Boolean(tebexUrl);`;
+
+  if (updated.includes(oldTebexSettings)) {
+    updated = updated.replace(
+      oldTebexSettings,
+      newTebexSettings
+    );
+  }
+
+  const oldList =
+    '    const list = Array.isArray(items) ? items : [];';
+  const newList = `    const list = Array.isArray(items)
+      ? items.filter(
+          (item) => !isDevelopmentShopItem(item)
+        )
+      : [];`;
+
+  if (updated.includes(oldList)) {
+    updated = updated.replace(oldList, newList);
+  }
+
+  updated = updated.replace(
+    /cache:\s*['"]default['"]/,
+    "cache: 'no-store'"
+  );
+
+  return updated;
+}
+
 function updateDevelopment(source) {
   let updated = source;
 
-  updated = insertAfter(
-    updated,
-    '  <link rel="stylesheet" href="./styles.css">',
-    '  <link rel="stylesheet" href="./premium-theme.css?v=2">',
-    'the Development stylesheet marker'
-  );
+  if (/premium-theme\.css\?v=\d+/.test(updated)) {
+    updated = updated.replace(
+      /premium-theme\.css\?v=\d+/g,
+      'premium-theme.css?v=3'
+    );
+  } else {
+    updated = insertAfter(
+      updated,
+      '  <link rel="stylesheet" href="./styles.css">',
+      '  <link rel="stylesheet" href="./premium-theme.css?v=3">',
+      'the Development stylesheet marker'
+    );
+  }
 
   updated = updated.replace(
     '<button class="nav-link" type="button" data-view-target="products">Products</button>',
@@ -185,15 +290,24 @@ function updateDevelopment(source) {
 }
 
 const roleplayBefore = readRequired(roleplayPath);
+const roleplayScriptBefore = readRequired(roleplayScriptPath);
 const developmentBefore = readRequired(developmentPath);
 
 const roleplayAfter = updateRoleplay(roleplayBefore);
+const roleplayScriptAfter = updateRoleplayScript(
+  roleplayScriptBefore
+);
 const developmentAfter = updateDevelopment(developmentBefore);
 
 const roleplayChanged = writeIfChanged(
   roleplayPath,
   roleplayBefore,
   roleplayAfter
+);
+const roleplayScriptChanged = writeIfChanged(
+  roleplayScriptPath,
+  roleplayScriptBefore,
+  roleplayScriptAfter
 );
 const developmentChanged = writeIfChanged(
   developmentPath,
@@ -202,8 +316,10 @@ const developmentChanged = writeIfChanged(
 );
 
 console.log(
-  `Blackstone premium update ready: Roleplay ${
+  `Blackstone silver update ready: Roleplay ${
     roleplayChanged ? 'updated' : 'already current'
+  }, Roleplay shop guard ${
+    roleplayScriptChanged ? 'updated' : 'already current'
   }, Development ${
     developmentChanged ? 'updated' : 'already current'
   }.`

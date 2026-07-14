@@ -218,6 +218,89 @@ function normaliseStoreUrl(value) {
   return safe.replace(/\/+$/, '');
 }
 
+function optionalStoreUrl(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  const safe = safeHttpsUrl(text);
+  return safe ? safe.replace(/\/+$/, '') : '';
+}
+
+function isDevelopmentStoreUrl(
+  value,
+  developmentStoreUrl = TEBEX_DEFAULT_STORE_URL
+) {
+  const candidate = optionalStoreUrl(value);
+  if (!candidate) return false;
+
+  const development = normaliseStoreUrl(developmentStoreUrl);
+
+  try {
+    const candidateUrl = new URL(candidate);
+    const developmentUrl = new URL(development);
+
+    return (
+      candidateUrl.hostname.toLowerCase() ===
+      developmentUrl.hostname.toLowerCase()
+    );
+  } catch {
+    return candidate.toLowerCase() === development.toLowerCase();
+  }
+}
+
+function isDevelopmentShopItem(item, developmentStoreUrl) {
+  if (!item || typeof item !== 'object') return false;
+
+  const id = String(item.id || '').toLowerCase();
+  const source = String(item.source || '').toLowerCase();
+
+  if (source === 'tebex' || id.startsWith('tebex-')) {
+    return true;
+  }
+
+  return isDevelopmentStoreUrl(
+    item.purchaseUrl,
+    developmentStoreUrl
+  );
+}
+
+function filterRoleplayShopItems(items, developmentStoreUrl) {
+  return (Array.isArray(items) ? items : []).filter(
+    (item) => !isDevelopmentShopItem(item, developmentStoreUrl)
+  );
+}
+
+function sanitizeRoleplayPublicPayload(payload, developmentStoreUrl) {
+  const safePayload =
+    payload && typeof payload === 'object'
+      ? { ...payload }
+      : {};
+
+  safePayload.shop = filterRoleplayShopItems(
+    safePayload.shop,
+    developmentStoreUrl
+  );
+
+  const settings =
+    safePayload.settings &&
+    typeof safePayload.settings === 'object'
+      ? { ...safePayload.settings }
+      : {};
+
+  if (
+    isDevelopmentStoreUrl(
+      settings.tebexStoreUrl,
+      developmentStoreUrl
+    )
+  ) {
+    settings.tebexStoreUrl = '';
+    settings.tebexEnabled = false;
+  }
+
+  safePayload.settings = settings;
+  return safePayload;
+}
+
 function parseStoredJson(value, fallback) {
   if (value === undefined || value === null || value === '') {
     return fallback;
@@ -714,24 +797,32 @@ async function fetchTebexListings(token) {
 
 
 async function separateRoleplayShop(env, developmentStoreUrl) {
+  if (!redisConfiguration(env)) {
+    return {
+      shopChanged: false,
+      settingsChanged: false
+    };
+  }
+
+  const developmentUrl = normaliseStoreUrl(
+    developmentStoreUrl || TEBEX_DEFAULT_STORE_URL
+  );
+
   const roleplayShop = parseStoredJson(
     await redisCommand(env, ['GET', SHOP_KEY]),
     []
   );
 
-  const cleanedRoleplayShop = Array.isArray(roleplayShop)
-    ? roleplayShop.filter((item) => {
-        const id = String(item?.id || '').toLowerCase();
-        const source = String(item?.source || '').toLowerCase();
+  const cleanedRoleplayShop = filterRoleplayShopItems(
+    roleplayShop,
+    developmentUrl
+  );
 
-        return source !== 'tebex' && !id.startsWith('tebex-');
-      })
-    : [];
-
-  if (
+  const shopChanged =
     Array.isArray(roleplayShop) &&
-    cleanedRoleplayShop.length !== roleplayShop.length
-  ) {
+    cleanedRoleplayShop.length !== roleplayShop.length;
+
+  if (shopChanged) {
     await redisCommand(env, [
       'SET',
       SHOP_KEY,
@@ -744,22 +835,31 @@ async function separateRoleplayShop(env, developmentStoreUrl) {
     {}
   );
 
-  if (
+  const settingsChanged =
     settings &&
     typeof settings === 'object' &&
-    normaliseStoreUrl(settings.tebexStoreUrl) ===
-      normaliseStoreUrl(developmentStoreUrl)
-  ) {
+    isDevelopmentStoreUrl(
+      settings.tebexStoreUrl,
+      developmentUrl
+    );
+
+  if (settingsChanged) {
     await redisCommand(env, [
       'SET',
       SETTINGS_KEY,
       JSON.stringify({
         ...settings,
         tebexStoreUrl: '',
-        tebexEnabled: false
+        tebexEnabled: false,
+        updatedAt: new Date().toISOString()
       })
     ]);
   }
+
+  return {
+    shopChanged,
+    settingsChanged
+  };
 }
 
 async function performTebexSync(env) {
@@ -930,6 +1030,149 @@ async function maybeSyncTebex(req, env) {
 }
 
 
+
+function createBufferedResponse() {
+  const headers = new Map();
+  const chunks = [];
+
+  const response = {
+    statusCode: 200,
+    headersSent: false,
+
+    setHeader(name, value) {
+      headers.set(String(name).toLowerCase(), {
+        name: String(name),
+        value
+      });
+    },
+
+    getHeader(name) {
+      return headers.get(String(name).toLowerCase())?.value;
+    },
+
+    removeHeader(name) {
+      headers.delete(String(name).toLowerCase());
+    },
+
+    writeHead(statusCode, outgoingHeaders = {}) {
+      this.statusCode = Number(statusCode) || 200;
+
+      for (const [name, value] of Object.entries(
+        outgoingHeaders || {}
+      )) {
+        this.setHeader(name, value);
+      }
+
+      return this;
+    },
+
+    write(chunk) {
+      if (chunk !== undefined && chunk !== null) {
+        chunks.push(
+          Buffer.isBuffer(chunk)
+            ? chunk
+            : Buffer.from(String(chunk))
+        );
+      }
+
+      return true;
+    },
+
+    end(chunk) {
+      if (chunk !== undefined && chunk !== null) {
+        this.write(chunk);
+      }
+
+      this.headersSent = true;
+      return this;
+    }
+  };
+
+  return {
+    response,
+    headers,
+    body() {
+      return Buffer.concat(chunks).toString('utf8');
+    }
+  };
+}
+
+function copyBufferedHeaders(buffered, res) {
+  for (const { name, value } of buffered.headers.values()) {
+    const lower = name.toLowerCase();
+
+    if (
+      lower === 'content-length' ||
+      lower === 'cache-control'
+    ) {
+      continue;
+    }
+
+    res.setHeader(name, value);
+  }
+}
+
+async function handleRoleplayPublic(
+  req,
+  res,
+  env,
+  handlePortal
+) {
+  const developmentStoreUrl = normaliseStoreUrl(
+    env.TEBEX_STORE_URL || TEBEX_DEFAULT_STORE_URL
+  );
+
+  try {
+    await separateRoleplayShop(env, developmentStoreUrl);
+  } catch (error) {
+    console.warn(
+      '[Blackstone RP shop separation]',
+      cleanText(
+        error?.message ||
+          'Could not clean previously synced Development products.',
+        240
+      )
+    );
+  }
+
+  const buffered = createBufferedResponse();
+  await handlePortal(req, buffered.response, env);
+
+  const rawBody = buffered.body();
+  let outputBody = rawBody;
+
+  if (buffered.response.statusCode >= 200 &&
+      buffered.response.statusCode < 300) {
+    try {
+      const payload = rawBody ? JSON.parse(rawBody) : {};
+      outputBody = JSON.stringify(
+        sanitizeRoleplayPublicPayload(
+          payload,
+          developmentStoreUrl
+        )
+      );
+    } catch {
+      outputBody = rawBody;
+    }
+  }
+
+  res.statusCode = buffered.response.statusCode;
+  copyBufferedHeaders(buffered, res);
+  res.setHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
+  res.setHeader(
+    'Cache-Control',
+    'no-store, max-age=0, must-revalidate'
+  );
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  return res.end(outputBody);
+}
+
 async function handleDevelopmentShop(req, res, env) {
   await maybeSyncTebex(req, env);
 
@@ -981,18 +1224,34 @@ module.exports = async function handler(req, res) {
     req.query = parseQuery(req);
     await parseBody(req);
 
+    const method = String(
+      req.method || 'GET'
+    ).toUpperCase();
+    const action = String(req.query?.action || 'public');
+
     if (
-      String(req.method || 'GET').toUpperCase() === 'GET' &&
-      String(req.query?.action || '') === 'development-shop'
+      method === 'GET' &&
+      action === 'development-shop'
     ) {
-      return await handleDevelopmentShop(req, res, process.env);
+      return await handleDevelopmentShop(
+        req,
+        res,
+        process.env
+      );
     }
 
-    // The normal portal backend now serves only the independent Roleplay
-    // donation/VIP shop and the rest of the community website data.
     const { handlePortal } = require(
       './_lib/portal-core.cjs'
     );
+
+    if (method === 'GET' && action === 'public') {
+      return await handleRoleplayPublic(
+        req,
+        res,
+        process.env,
+        handlePortal
+      );
+    }
 
     return await handlePortal(req, res, process.env);
   } catch (error) {
@@ -1005,6 +1264,11 @@ module.exports._test = {
   normaliseTebexProducts,
   mergeWithExistingShop,
   normaliseStoreUrl,
+  optionalStoreUrl,
+  isDevelopmentStoreUrl,
+  isDevelopmentShopItem,
+  filterRoleplayShopItems,
+  sanitizeRoleplayPublicPayload,
   packagePurchaseUrl,
   formatPrice
 };
