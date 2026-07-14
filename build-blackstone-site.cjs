@@ -51,6 +51,20 @@ function updateRoleplay(source) {
     'script.js?v=13'
   );
 
+  if (/staff-photo-patch\.js\?v=\d+/.test(updated)) {
+    updated = updated.replace(
+      /staff-photo-patch\.js\?v=\d+/g,
+      'staff-photo-patch.js?v=1'
+    );
+  } else if (updated.includes('</body>')) {
+    updated = updated.replace(
+      '</body>',
+      '  <script src="staff-photo-patch.js?v=1" defer></script>\n</body>'
+    );
+  } else {
+    throw new Error('Could not locate the end of the Roleplay page to inject the Panox staff photo patch.');
+  }
+
   const developmentPlain = '<a href="development/">Development</a>';
   const developmentClassed =
     '<a class="nav-development" href="development/">Development</a>';
