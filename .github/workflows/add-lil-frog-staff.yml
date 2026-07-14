@@ -1,0 +1,196 @@
+name: Add Lil frog Staff Card
+
+on:
+  push:
+    paths:
+      - ".github/workflows/add-lil-frog-staff.yml"
+      - "assets/staff/lil-frog.webp"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-staff-page:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out website
+        uses: actions/checkout@v4
+
+      - name: Add Lil frog beside BEAR
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          index_path = Path("index.html")
+          styles_path = Path("styles.css")
+          image_path = Path("assets/staff/lil-frog.webp")
+
+          for required in (index_path, styles_path, image_path):
+              if not required.exists():
+                  raise SystemExit(f"Required file is missing: {required}")
+
+          index = index_path.read_text(encoding="utf-8")
+          styles = styles_path.read_text(encoding="utf-8")
+
+          lil_card = '''          <article class="staff-card">
+            <div class="staff-image"><img decoding="async" src="assets/staff/lil-frog.webp?v=1" loading="lazy" width="512" height="512" alt="Lil frog staff profile image" /></div>
+            <div class="staff-copy"><span>TRIAL MOD</span><h3>Lil frog</h3><p>Trial Moderator.</p></div>
+          </article>'''
+
+          def article_bounds(source, name):
+              name_marker = f"<h3>{name}</h3>"
+              marker_position = source.find(name_marker)
+
+              if marker_position < 0:
+                  return None
+
+              article_start = source.rfind(
+                  '<article class="staff-card">',
+                  0,
+                  marker_position
+              )
+              article_end = source.find("</article>", marker_position)
+
+              if article_start < 0 or article_end < 0:
+                  return None
+
+              return article_start, article_end + len("</article>")
+
+          # Replace an existing Lil frog card rather than duplicating it.
+          lil_bounds = article_bounds(index, "Lil frog")
+
+          if lil_bounds:
+              start, end = lil_bounds
+              index = index[:start] + lil_card + index[end:]
+          else:
+              bear_bounds = article_bounds(index, "BEAR")
+
+              if not bear_bounds:
+                  raise SystemExit(
+                      "The BEAR staff card could not be located in index.html."
+                  )
+
+              bear_start, bear_end = bear_bounds
+              index = (
+                  index[:bear_end] +
+                  "\n" +
+                  lil_card +
+                  index[bear_end:]
+              )
+
+          # Change only the staff row containing BEAR into a two-card row.
+          bear_position = index.find("<h3>BEAR</h3>")
+          grid_position = index.rfind(
+              '<div class="staff-grid ',
+              0,
+              bear_position
+          )
+          grid_tag_end = index.find(">", grid_position)
+
+          if grid_position < 0 or grid_tag_end < 0:
+              raise SystemExit(
+                  "The staff grid containing BEAR could not be located."
+              )
+
+          grid_tag = index[grid_position:grid_tag_end + 1]
+          updated_grid_tag = re.sub(
+              r'class="staff-grid[^"]*"',
+              'class="staff-grid staff-grid-two"',
+              grid_tag
+          )
+          index = (
+              index[:grid_position] +
+              updated_grid_tag +
+              index[grid_tag_end + 1:]
+          )
+
+          grid_css = '''.staff-grid-two {
+            grid-template-columns: repeat(2, minmax(260px, 300px));
+          }
+          '''
+
+          mobile_css = '''@media (max-width: 680px) {
+            .staff-grid-two {
+              grid-template-columns: minmax(0, 1fr);
+            }
+          }
+          '''
+
+          if ".staff-grid-two {" in styles:
+              styles = re.sub(
+                  r'\.staff-grid-two\s*\{.*?\}',
+                  grid_css.strip(),
+                  styles,
+                  count=1,
+                  flags=re.S
+              )
+          else:
+              single_pattern = re.compile(
+                  r'(\.staff-grid-single\s*\{.*?\}\s*)',
+                  re.S
+              )
+              match = single_pattern.search(styles)
+
+              if not match:
+                  raise SystemExit(
+                      "The existing staff-grid-single CSS could not be located."
+                  )
+
+              styles = (
+                  styles[:match.end()] +
+                  "\n" +
+                  grid_css +
+                  styles[match.end():]
+              )
+
+          if "@media (max-width: 680px)" not in styles:
+              styles += "\n\n" + mobile_css
+
+          index_path.write_text(index, encoding="utf-8")
+          styles_path.write_text(styles, encoding="utf-8")
+
+          final_index = index_path.read_text(encoding="utf-8")
+          final_styles = styles_path.read_text(encoding="utf-8")
+
+          checks = [
+              'src="assets/staff/lil-frog.webp?v=1"',
+              "<span>TRIAL MOD</span>",
+              "<h3>Lil frog</h3>",
+              'class="staff-grid staff-grid-two"'
+          ]
+
+          for check in checks:
+              if check not in final_index:
+                  raise SystemExit(
+                      f"Final staff-page verification failed: {check}"
+                  )
+
+          if final_index.count("<h3>Lil frog</h3>") != 1:
+              raise SystemExit(
+                  "Lil frog was added more than once."
+              )
+
+          if ".staff-grid-two {" not in final_styles:
+              raise SystemExit(
+                  "Two-card staff layout CSS was not added."
+              )
+
+          print("Lil frog is now positioned beside BEAR.")
+
+      - name: Commit actual website files
+        run: |
+          git config user.name "Blackstone Website Automation"
+          git config user.email "actions@users.noreply.github.com"
+
+          git add index.html styles.css assets/staff/lil-frog.webp
+
+          if git diff --cached --quiet; then
+            echo "Lil frog is already present on the staff page."
+            exit 0
+          fi
+
+          git commit -m "Add Lil frog beside BEAR on staff page"
+          git push
