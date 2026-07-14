@@ -112,3 +112,75 @@
       #858c93 100%
     );
 }
+
+
+/* Tebex custom product media gallery */
+.product-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.product-gallery-item {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: #090a0c;
+  cursor: pointer;
+  transition:
+    border-color .2s ease,
+    transform .2s ease,
+    box-shadow .2s ease;
+}
+
+.product-gallery-item:hover,
+.product-gallery-item.is-active {
+  border-color: rgba(235, 239, 243, .68);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .34);
+}
+
+.product-gallery-item.is-active::after {
+  content: "";
+  position: absolute;
+  inset: auto 8px 7px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #f5f7f8,
+    transparent
+  );
+}
+
+.product-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-gallery-item.image-fallback img {
+  object-fit: contain;
+  padding: 18%;
+  opacity: .7;
+}
+
+.product-media.image-fallback > img,
+.dialog-hero.image-fallback > img {
+  object-fit: contain;
+  padding: 9%;
+  opacity: .68;
+  background:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+    #0b0d10;
+  background-size: 32px 32px;
+}
+
+@media (max-width: 760px) {
+  .product-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

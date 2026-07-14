@@ -57,6 +57,68 @@
     return fallback;
   }
 
+  function mediaUrlsFrom(value) {
+    const candidates = [];
+
+    function visit(entry, depth = 0) {
+      if (depth > 4 || entry === null || entry === undefined) return;
+
+      if (typeof entry === "string") {
+        const safe = safeUrl(entry, "");
+        if (safe) candidates.push(safe);
+        return;
+      }
+
+      if (Array.isArray(entry)) {
+        entry.forEach((item) => visit(item, depth + 1));
+        return;
+      }
+
+      if (typeof entry !== "object") return;
+
+      [
+        "url", "src", "image", "imageUrl", "image_url",
+        "original", "full", "large", "medium",
+        "thumbnail", "thumbnailUrl", "thumbnail_url",
+        "cdnUrl", "cdn_url", "resource", "file", "path"
+      ].forEach((key) => {
+        if (key in entry) visit(entry[key], depth + 1);
+      });
+
+      ["media", "images", "gallery", "screenshots", "assets", "sizes"]
+        .forEach((key) => {
+          if (key in entry) visit(entry[key], depth + 1);
+        });
+    }
+
+    visit(value);
+    return [...new Set(candidates)].slice(0, 20);
+  }
+
+  function productMediaUrls(product) {
+    return mediaUrlsFrom([
+      product?.imageUrl,
+      product?.mediaUrls,
+      product?.media,
+      product?.images
+    ]);
+  }
+
+  function attachImageFallbacks(root = document) {
+    root.querySelectorAll("img[data-blackstone-image]").forEach((image) => {
+      if (image.dataset.fallbackBound === "true") return;
+      image.dataset.fallbackBound = "true";
+      image.referrerPolicy = "no-referrer";
+      image.addEventListener("error", () => {
+        if (image.dataset.fallbackApplied === "true") return;
+        image.dataset.fallbackApplied = "true";
+        image.src = "../assets/blackstone-logo.webp";
+        image.closest(".product-media, .dialog-hero, .product-gallery-item")
+          ?.classList.add("image-fallback");
+      });
+    });
+  }
+
   function parsePrice(label) {
     const match = String(label || "").replace(/,/g, "").match(/(-?\d+(?:\.\d+)?)/);
     return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
@@ -84,7 +146,20 @@
       title,
       category: cleanText(item?.category || "Blackstone Development"),
       description: cleanText(item?.description || "View this package on the official Blackstone Development Tebex store."),
-      imageUrl: safeUrl(item?.imageUrl || item?.image, ""),
+      imageUrl: mediaUrlsFrom([
+        item?.imageUrl,
+        item?.image,
+        item?.mediaUrls,
+        item?.media,
+        item?.images
+      ])[0] || "",
+      mediaUrls: mediaUrlsFrom([
+        item?.imageUrl,
+        item?.image,
+        item?.mediaUrls,
+        item?.media,
+        item?.images
+      ]),
       priceLabel: cleanText(item?.priceLabel || item?.price || "View Details"),
       purchaseUrl,
       soldOut: Boolean(item?.soldOut),
@@ -139,6 +214,7 @@
         ...profile,
         id: profile.slug,
         imageUrl: "",
+        mediaUrls: [],
         priceLabel: profile.status === "Coming Soon" ? "Coming Soon" : "View Store",
         purchaseUrl: config.brand.storeUrl,
         soldOut: false,
@@ -270,8 +346,10 @@
   }
 
   function productCard(product) {
-    const image = product.imageUrl
-      ? `<img src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.title)} product preview" loading="lazy" decoding="async">`
+    const cardMedia = productMediaUrls(product);
+    const primaryImage = cardMedia[0] || "";
+    const image = primaryImage
+      ? `<img data-blackstone-image src="${escapeHtml(primaryImage)}" alt="${escapeHtml(product.title)} product preview" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
       : `<div class="product-placeholder"><img src="../assets/blackstone-logo.webp" alt="" loading="lazy"></div>`;
 
     const frameworks = (product.frameworks || [])
@@ -311,6 +389,7 @@
       .sort((a, b) => Number(b.featured) - Number(a.featured))
       .slice(0, 3);
     elements.featuredGrid.innerHTML = featured.map(productCard).join("");
+    attachImageFallbacks(elements.featuredGrid);
   }
 
   function renderBundles() {
@@ -366,6 +445,7 @@
   function renderProducts() {
     const visible = sortProducts(state.products.filter(productMatches));
     elements.productGrid.innerHTML = visible.map(productCard).join("");
+    attachImageFallbacks(elements.productGrid);
     elements.productEmpty.classList.toggle("is-hidden", visible.length > 0);
     elements.catalogueSummary.textContent = `${visible.length} of ${state.products.length} product${state.products.length === 1 ? "" : "s"}`;
   }
@@ -525,8 +605,37 @@ ensure ${escapeHtml(product.slug.replace(/-/g, "_"))}</pre>
     if (!product) return;
 
     state.lastFocused = document.activeElement;
-    const image = product.imageUrl
-      ? `<img class="dialog-hero-image" src="${escapeHtml(product.imageUrl)}" alt="" loading="eager">`
+    const galleryMedia = productMediaUrls(product);
+    const primaryImage = galleryMedia[0] || "";
+    const image = primaryImage
+      ? `<img id="dialogHeroImage" data-blackstone-image class="dialog-hero-image" src="${escapeHtml(primaryImage)}" alt="${escapeHtml(product.title)} preview" loading="eager" referrerpolicy="no-referrer">`
+      : "";
+
+    const gallery = galleryMedia.length
+      ? `
+          <section>
+            <h3>Product Gallery</h3>
+            <div class="product-gallery">
+              ${galleryMedia.map((url, index) => `
+                <button
+                  class="product-gallery-item${index === 0 ? " is-active" : ""}"
+                  type="button"
+                  data-gallery-image="${escapeHtml(url)}"
+                  aria-label="Show ${escapeHtml(product.title)} image ${index + 1}"
+                >
+                  <img
+                    data-blackstone-image
+                    src="${escapeHtml(url)}"
+                    alt="${escapeHtml(product.title)} image ${index + 1}"
+                    loading="lazy"
+                    decoding="async"
+                    referrerpolicy="no-referrer"
+                  >
+                </button>
+              `).join("")}
+            </div>
+          </section>
+        `
       : "";
 
     const purchaseLabel = product.comingSoon ? "Open Store" : product.soldOut ? "View Sold Out Package" : "Purchase on Tebex";
@@ -551,6 +660,7 @@ ensure ${escapeHtml(product.slug.replace(/-/g, "_"))}</pre>
       </section>
       <div class="dialog-content-grid">
         <div class="dialog-main">
+          ${gallery}
           <section>
             <h3>Included Features</h3>
             <div class="feature-grid">${features}</div>
@@ -581,6 +691,8 @@ ensure ${escapeHtml(product.slug.replace(/-/g, "_"))}</pre>
         </aside>
       </div>
     `;
+
+    attachImageFallbacks(elements.dialogContent);
 
     if (typeof elements.productDialog.showModal === "function") {
       elements.productDialog.showModal();
@@ -724,6 +836,20 @@ ensure ${escapeHtml(product.slug.replace(/-/g, "_"))}</pre>
         showView("support");
         elements.supportType.value = supportType.dataset.supportType;
         elements.supportForm.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      const galleryButton = event.target.closest("[data-gallery-image]");
+      if (galleryButton) {
+        const heroImage = q("#dialogHeroImage");
+        const selectedUrl = safeUrl(galleryButton.dataset.galleryImage, "");
+        if (heroImage && selectedUrl) {
+          heroImage.src = selectedUrl;
+          heroImage.dataset.fallbackApplied = "false";
+          qa("[data-gallery-image]", elements.dialogContent).forEach((button) => {
+            button.classList.toggle("is-active", button === galleryButton);
+          });
+        }
         return;
       }
 

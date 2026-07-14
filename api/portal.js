@@ -31,6 +31,7 @@ const RETRY_INTERVAL_MS = 60 * 1000;
 const TEBEX_TIMEOUT_MS = 8000;
 const REDIS_TIMEOUT_MS = 5000;
 const MAX_SYNCED_PRODUCTS = 250;
+const IMAGE_SYNC_SCHEMA_VERSION = 2;
 
 let localNextSyncAt = 0;
 let activeSyncPromise = null;
@@ -491,24 +492,133 @@ function formatPrice(packageData, fallbackCurrency) {
   }
 }
 
-function packageImage(packageData) {
-  const image = packageData?.image;
-  const candidates = [
-    typeof image === 'string' ? image : '',
-    image?.url,
-    image?.src,
-    packageData?.image_url,
-    packageData?.imageUrl,
-    packageData?.thumbnail,
-    packageData?.thumbnail_url
-  ];
+function mediaUrl(value) {
+  if (typeof value !== 'string') return '';
 
-  for (const candidate of candidates) {
-    const safe = safeHttpsUrl(candidate);
-    if (safe) return safe;
+  const text = value.trim();
+  if (!text) return '';
+
+  if (text.startsWith('//')) {
+    return safeHttpsUrl(`https:${text}`);
   }
 
-  return '';
+  return safeHttpsUrl(text);
+}
+
+function mediaItemLooksLikeVideo(item) {
+  if (!item || typeof item !== 'object') return false;
+
+  const type = cleanText(
+    item.type ??
+      item.media_type ??
+      item.mediaType ??
+      item.kind ??
+      item.mime_type ??
+      item.mimeType ??
+      item.content_type ??
+      item.contentType,
+    80
+  ).toLowerCase();
+
+  return /video|youtube|vimeo/.test(type);
+}
+
+function collectMediaUrls(value, output, depth = 0) {
+  if (depth > 4 || value === undefined || value === null) {
+    return;
+  }
+
+  if (typeof value === 'string') {
+    const safe = mediaUrl(value);
+    if (safe) output.push(safe);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (mediaItemLooksLikeVideo(item)) continue;
+      collectMediaUrls(item, output, depth + 1);
+    }
+    return;
+  }
+
+  if (typeof value !== 'object' || mediaItemLooksLikeVideo(value)) {
+    return;
+  }
+
+  const preferredKeys = [
+    'url',
+    'src',
+    'image',
+    'image_url',
+    'imageUrl',
+    'original',
+    'original_url',
+    'originalUrl',
+    'full',
+    'full_url',
+    'fullUrl',
+    'large',
+    'large_url',
+    'largeUrl',
+    'medium',
+    'medium_url',
+    'mediumUrl',
+    'thumbnail',
+    'thumbnail_url',
+    'thumbnailUrl',
+    'cdn_url',
+    'cdnUrl',
+    'resource',
+    'file',
+    'path'
+  ];
+
+  for (const key of preferredKeys) {
+    if (!(key in value)) continue;
+    collectMediaUrls(value[key], output, depth + 1);
+  }
+
+  const nestedKeys = [
+    'media',
+    'images',
+    'gallery',
+    'screenshots',
+    'assets',
+    'sizes',
+    'variants'
+  ];
+
+  for (const key of nestedKeys) {
+    if (!(key in value)) continue;
+    collectMediaUrls(value[key], output, depth + 1);
+  }
+}
+
+function packageMediaUrls(packageData) {
+  const collected = [];
+
+  collectMediaUrls(
+    [
+      packageData?.image,
+      packageData?.image_url,
+      packageData?.imageUrl,
+      packageData?.thumbnail,
+      packageData?.thumbnail_url,
+      packageData?.thumbnailUrl,
+      packageData?.media,
+      packageData?.images,
+      packageData?.gallery,
+      packageData?.screenshots
+    ],
+    collected
+  );
+
+  return [...new Set(collected)].slice(0, 20);
+}
+
+function packageImage(packageData) {
+  return packageMediaUrls(packageData)[0] || '';
 }
 
 function packageIdentifier(packageData) {
@@ -653,6 +763,7 @@ function normaliseTebexProducts(payload, storeUrl) {
           ) ||
           'View this package on the official Blackstone Development Tebex store.',
         imageUrl: packageImage(packageData),
+        mediaUrls: packageMediaUrls(packageData),
         purchaseUrl: packagePurchaseUrl(
           packageData,
           storeUrl
@@ -892,6 +1003,8 @@ async function performTebexSync(env) {
   );
 
   if (
+    Number(storedMeta?.schemaVersion) ===
+      IMAGE_SYNC_SCHEMA_VERSION &&
     Number.isFinite(lastSyncedAt) &&
     now - lastSyncedAt < SYNC_INTERVAL_MS
   ) {
@@ -936,6 +1049,7 @@ async function performTebexSync(env) {
         SYNC_META_KEY,
         JSON.stringify({
           status: 'waiting',
+          schemaVersion: IMAGE_SYNC_SCHEMA_VERSION,
           productCount: 0,
           checkedAt: new Date().toISOString(),
           message:
@@ -975,6 +1089,7 @@ async function performTebexSync(env) {
       SYNC_META_KEY,
       JSON.stringify({
         status: 'ok',
+        schemaVersion: IMAGE_SYNC_SCHEMA_VERSION,
         productCount: syncedProducts.length,
         totalWebsiteItems: mergedShop.length,
         lastSyncedAt: syncedAt,
@@ -1269,6 +1384,8 @@ module.exports._test = {
   isDevelopmentShopItem,
   filterRoleplayShopItems,
   sanitizeRoleplayPublicPayload,
+  packageMediaUrls,
+  packageImage,
   packagePurchaseUrl,
   formatPrice
 };
