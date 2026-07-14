@@ -1,0 +1,89 @@
+name: Apply Panox Profile Photo
+
+on:
+  push:
+    paths:
+      - ".github/workflows/apply-panox-profile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-panox-card:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out website
+        uses: actions/checkout@v4
+
+      - name: Replace Panox staff image in homepage
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          index_path = Path("index.html")
+          image_path = Path("assets/staff/panox-profile.webp")
+
+          if not index_path.exists():
+              raise SystemExit("index.html was not found in the repository root.")
+
+          if not image_path.exists():
+              raise SystemExit(
+                  "assets/staff/panox-profile.webp was not found. "
+                  "Upload the previous Panox image package first."
+              )
+
+          source = index_path.read_text(encoding="utf-8")
+
+          replacement = '''          <article class="staff-card">
+            <div class="staff-image"><img decoding="async" src="assets/staff/panox-profile.webp?v=3" loading="lazy" width="512" height="512" alt="Panox staff profile image" /></div>
+            <div class="staff-copy"><span>FOUNDER</span><h3>Panox</h3><p>Founder &amp; Blackstone's Wife.</p></div>
+          </article>'''
+
+          pattern = re.compile(
+              r'          <article class="staff-card">\s*'
+              r'<div class="staff-image(?:\s+staff-logo-image)?"><img[^>]*></div>\s*'
+              r'<div class="staff-copy"><span>FOUNDER</span><h3>Panox</h3>'
+              r'<p>Founder &amp; Blackstone\'s Wife\.</p></div>\s*'
+              r'</article>'
+          )
+
+          if pattern.search(source):
+              updated = pattern.sub(replacement, source, count=1)
+          elif 'assets/staff/panox-profile.webp' in source:
+              updated = re.sub(
+                  r'assets/staff/panox-profile\.webp(?:\?v=\d+)?',
+                  'assets/staff/panox-profile.webp?v=3',
+                  source
+              )
+          else:
+              raise SystemExit(
+                  "The Panox founder card could not be located in index.html."
+              )
+
+          index_path.write_text(updated, encoding="utf-8")
+
+          check = index_path.read_text(encoding="utf-8")
+          if 'src="assets/staff/panox-profile.webp?v=3"' not in check:
+              raise SystemExit("Panox image replacement verification failed.")
+
+          if '<h3>Panox</h3>' not in check:
+              raise SystemExit("Panox staff card verification failed.")
+
+          print("Panox homepage staff card now uses the uploaded profile photo.")
+
+      - name: Commit actual homepage update
+        run: |
+          git config user.name "Blackstone Website Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+
+          if git diff --cached --quiet; then
+            echo "Panox profile photo is already applied."
+            exit 0
+          fi
+
+          git commit -m "Apply Panox profile photo to staff page"
+          git push
