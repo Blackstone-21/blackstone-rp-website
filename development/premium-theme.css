@@ -1,0 +1,88 @@
+:root {
+  --gold: #d4aa55;
+  --gold-bright: #f3d58e;
+  --gold-dark: #896326;
+}
+
+.site-header {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.018), transparent 30%, transparent 72%, rgba(212,170,85,.025)),
+    rgba(7,8,10,.95);
+  border-bottom-color: rgba(255,255,255,.14);
+}
+
+.brand {
+  padding-right: 25px;
+  border-right: 1px solid rgba(255,255,255,.15);
+}
+
+.nav-link.is-active,
+.nav-link:hover,
+.nav-link:focus-visible {
+  color: var(--white);
+  background: rgba(212,170,85,.07);
+}
+
+.nav-link-external {
+  color: var(--gold-bright);
+  border-color: rgba(212,170,85,.24);
+}
+
+.header-store-button {
+  color: #11100d;
+  border-color: var(--gold-bright);
+  background: linear-gradient(135deg, #fff0c9, #c4943e 42%, #efd28b 72%, #8e672b);
+  box-shadow: 0 0 30px rgba(212,170,85,.12);
+}
+
+.header-store-button:hover {
+  background: linear-gradient(135deg, #fff5df, #dbad56 45%, #f1d997 74%, #9f7834);
+}
+
+.eyebrow {
+  color: #d7c18d;
+}
+
+.eyebrow > span,
+.status-dot {
+  background: linear-gradient(90deg, var(--gold-bright), var(--gold-dark));
+}
+
+.hero h1 em {
+  -webkit-text-stroke-color: rgba(243,213,142,.72);
+}
+
+.button-primary {
+  color: #11100d;
+  border-color: var(--gold-bright);
+  background: linear-gradient(135deg, #fff0c9, #c4943e 42%, #efd28b 72%, #8e672b);
+}
+
+.product-card:hover,
+.bundle-card:hover,
+.benefit-card:hover,
+.support-option:hover {
+  border-color: rgba(212,170,85,.38);
+}
+
+.badge-featured,
+.badge-new,
+.filter-chip:hover,
+.filter-chip.is-active {
+  color: #11100d;
+  background: linear-gradient(135deg, #f6dfaa, #bd8d38);
+  border-color: #e1bd67;
+}
+
+.text-button:hover,
+.catalogue-summary a:hover,
+.generated-ticket button {
+  color: var(--gold-bright);
+}
+
+@media (max-width: 1080px) {
+  .brand {
+    border-right: 0;
+    padding-right: 0;
+  }
+}

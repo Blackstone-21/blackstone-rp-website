@@ -21,9 +21,10 @@ const TEBEX_DEFAULT_STORE_URL =
 
 const DATA_PREFIX = 'bsrp:v2:';
 const SHOP_KEY = `${DATA_PREFIX}shop`;
+const DEVELOPMENT_SHOP_KEY = `${DATA_PREFIX}development-shop`;
 const SETTINGS_KEY = `${DATA_PREFIX}settings`;
-const SYNC_META_KEY = `${DATA_PREFIX}tebex-sync-meta`;
-const SYNC_LOCK_KEY = `${DATA_PREFIX}tebex-sync-lock`;
+const SYNC_META_KEY = `${DATA_PREFIX}development-tebex-sync-meta`;
+const SYNC_LOCK_KEY = `${DATA_PREFIX}development-tebex-sync-lock`;
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const RETRY_INTERVAL_MS = 60 * 1000;
@@ -711,6 +712,56 @@ async function fetchTebexListings(token) {
   }
 }
 
+
+async function separateRoleplayShop(env, developmentStoreUrl) {
+  const roleplayShop = parseStoredJson(
+    await redisCommand(env, ['GET', SHOP_KEY]),
+    []
+  );
+
+  const cleanedRoleplayShop = Array.isArray(roleplayShop)
+    ? roleplayShop.filter((item) => {
+        const id = String(item?.id || '').toLowerCase();
+        const source = String(item?.source || '').toLowerCase();
+
+        return source !== 'tebex' && !id.startsWith('tebex-');
+      })
+    : [];
+
+  if (
+    Array.isArray(roleplayShop) &&
+    cleanedRoleplayShop.length !== roleplayShop.length
+  ) {
+    await redisCommand(env, [
+      'SET',
+      SHOP_KEY,
+      JSON.stringify(cleanedRoleplayShop)
+    ]);
+  }
+
+  const settings = parseStoredJson(
+    await redisCommand(env, ['GET', SETTINGS_KEY]),
+    {}
+  );
+
+  if (
+    settings &&
+    typeof settings === 'object' &&
+    normaliseStoreUrl(settings.tebexStoreUrl) ===
+      normaliseStoreUrl(developmentStoreUrl)
+  ) {
+    await redisCommand(env, [
+      'SET',
+      SETTINGS_KEY,
+      JSON.stringify({
+        ...settings,
+        tebexStoreUrl: '',
+        tebexEnabled: false
+      })
+    ]);
+  }
+}
+
 async function performTebexSync(env) {
   const now = Date.now();
   const token = cleanText(
@@ -728,6 +779,8 @@ async function performTebexSync(env) {
     localNextSyncAt = now + RETRY_INTERVAL_MS;
     return;
   }
+
+  await separateRoleplayShop(env, storeUrl);
 
   const storedMeta = parseStoredJson(
     await redisCommand(env, ['GET', SYNC_META_KEY]),
@@ -800,7 +853,7 @@ async function performTebexSync(env) {
     }
 
     const existingShop = parseStoredJson(
-      await redisCommand(env, ['GET', SHOP_KEY]),
+      await redisCommand(env, ['GET', DEVELOPMENT_SHOP_KEY]),
       []
     );
 
@@ -809,32 +862,12 @@ async function performTebexSync(env) {
       syncedProducts
     );
 
-    const existingSettings = parseStoredJson(
-      await redisCommand(env, ['GET', SETTINGS_KEY]),
-      {}
-    );
-
-    const updatedSettings = {
-      ...(existingSettings &&
-      typeof existingSettings === 'object'
-        ? existingSettings
-        : {}),
-      tebexStoreUrl: storeUrl,
-      tebexEnabled: true
-    };
-
     const syncedAt = new Date().toISOString();
 
     await redisCommand(env, [
       'SET',
-      SHOP_KEY,
+      DEVELOPMENT_SHOP_KEY,
       JSON.stringify(mergedShop)
-    ]);
-
-    await redisCommand(env, [
-      'SET',
-      SETTINGS_KEY,
-      JSON.stringify(updatedSettings)
     ]);
 
     await redisCommand(env, [
@@ -863,7 +896,7 @@ async function maybeSyncTebex(req, env) {
 
   if (
     method !== 'GET' ||
-    action !== 'public' ||
+    action !== 'development-shop' ||
     isFalse(env.TEBEX_SYNC_ENABLED)
   ) {
     return;
@@ -896,15 +929,67 @@ async function maybeSyncTebex(req, env) {
   await activeSyncPromise;
 }
 
+
+async function handleDevelopmentShop(req, res, env) {
+  await maybeSyncTebex(req, env);
+
+  let shop = [];
+  let sync = {};
+
+  try {
+    shop = parseStoredJson(
+      await redisCommand(env, ['GET', DEVELOPMENT_SHOP_KEY]),
+      []
+    );
+
+    sync = parseStoredJson(
+      await redisCommand(env, ['GET', SYNC_META_KEY]),
+      {}
+    );
+  } catch (error) {
+    console.warn(
+      '[Blackstone Development shop]',
+      cleanText(error?.message || 'Development shop cache unavailable.', 220)
+    );
+  }
+
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader(
+    'Cache-Control',
+    'public, max-age=60, s-maxage=300, stale-while-revalidate=3600'
+  );
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  return res.end(
+    JSON.stringify({
+      ok: true,
+      shop: Array.isArray(shop) ? shop : [],
+      settings: {
+        tebexEnabled: true,
+        tebexStoreUrl: normaliseStoreUrl(
+          env.TEBEX_STORE_URL || TEBEX_DEFAULT_STORE_URL
+        )
+      },
+      sync
+    })
+  );
+}
+
 module.exports = async function handler(req, res) {
   try {
     req.query = parseQuery(req);
     await parseBody(req);
 
-    // A Tebex failure never breaks the Blackstone website. The existing
-    // Redis shop remains available and the normal portal backend still runs.
-    await maybeSyncTebex(req, process.env);
+    if (
+      String(req.method || 'GET').toUpperCase() === 'GET' &&
+      String(req.query?.action || '') === 'development-shop'
+    ) {
+      return await handleDevelopmentShop(req, res, process.env);
+    }
 
+    // The normal portal backend now serves only the independent Roleplay
+    // donation/VIP shop and the rest of the community website data.
     const { handlePortal } = require(
       './_lib/portal-core.cjs'
     );

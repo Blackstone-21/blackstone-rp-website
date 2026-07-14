@@ -1,10 +1,10 @@
 {
   "name": "blackstone-rp-website",
-  "version": "4.7.0",
+  "version": "5.0.0",
   "private": true,
   "scripts": {
-    "postinstall": "node inject-navigation.cjs",
-    "vercel-build": "node inject-navigation.cjs"
+    "postinstall": "node build-blackstone-site.cjs",
+    "vercel-build": "node build-blackstone-site.cjs"
   },
   "engines": {
     "node": "22.x"

@@ -196,7 +196,7 @@
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8500);
-      const response = await fetch("/api/portal?action=public", {
+      const response = await fetch("/api/portal?action=development-shop", {
         headers: { Accept: "application/json" },
         cache: "no-store",
         credentials: "same-origin",
