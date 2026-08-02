@@ -1,0 +1,151 @@
+name: Add pads lefe Staff Card
+
+on:
+  push:
+    paths:
+      - ".github/workflows/add-pads-lefe-staff.yml"
+      - "assets/staff/pads-lefe.webp"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-staff-page:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out website
+        uses: actions/checkout@v4
+
+      - name: Add pads lefe to the staff page
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          index_path = Path("index.html")
+          styles_path = Path("styles.css")
+          image_path = Path("assets/staff/pads-lefe.webp")
+
+          for required in (index_path, styles_path, image_path):
+              if not required.exists():
+                  raise SystemExit(f"Required file is missing: {required}")
+
+          index = index_path.read_text(encoding="utf-8")
+          styles = styles_path.read_text(encoding="utf-8")
+
+          pads_card = '''          <article class="staff-card">
+            <div class="staff-image"><img decoding="async" src="assets/staff/pads-lefe.webp?v=1" loading="lazy" width="512" height="512" alt="pads lefe staff profile image" /></div>
+            <div class="staff-copy"><span>ADMINISTRATOR</span><h3>pads lefe</h3><p>Administrator.</p></div>
+          </article>'''
+
+          def article_bounds(source, name):
+              marker = f"<h3>{name}</h3>"
+              marker_position = source.find(marker)
+              if marker_position < 0:
+                  return None
+              article_start = source.rfind('<article class="staff-card">', 0, marker_position)
+              article_end = source.find('</article>', marker_position)
+              if article_start < 0 or article_end < 0:
+                  return None
+              return article_start, article_end + len('</article>')
+
+          pads_bounds = article_bounds(index, 'pads lefe')
+          if pads_bounds:
+              start, end = pads_bounds
+              index = index[:start] + pads_card + index[end:]
+          else:
+              insert_after = article_bounds(index, 'Lil frog') or article_bounds(index, 'BEAR')
+              if not insert_after:
+                  raise SystemExit('Could not locate BEAR or Lil frog staff card in index.html.')
+              _, end = insert_after
+              index = index[:end] + '
+' + pads_card + index[end:]
+
+          group_match = re.search(
+              r'(<div class="staff-group reveal">\s*<div class="staff-group-heading">\s*<span>02</span>\s*<h3>Our Staff</h3>\s*</div>\s*)(<div class="staff-grid[^"]*">)',
+              index,
+              flags=re.S
+          )
+          if not group_match:
+              raise SystemExit('Could not locate the Our Staff grid.')
+
+          old_tag = group_match.group(2)
+          new_tag = '<div class="staff-grid staff-grid-three">'
+          index = index.replace(old_tag, new_tag, 1)
+
+          styles = re.sub(r'\.staff-grid-three\s*\{.*?\}\s*', '', styles, flags=re.S)
+
+          three_css = '''.staff-grid-three {
+  grid-template-columns: repeat(3, minmax(260px, 300px));
+}
+'''
+          tablet_media = '''@media (max-width: 980px) {
+  .staff-grid-three {
+    grid-template-columns: repeat(2, minmax(260px, 300px));
+  }
+}
+'''
+          mobile_media = '''@media (max-width: 680px) {
+  .staff-grid-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+'''
+
+          anchor = '.staff-grid-two {' if '.staff-grid-two {' in styles else '.staff-grid-single {'
+          pos = styles.find(anchor)
+          if pos == -1:
+              raise SystemExit('Could not locate the staff grid CSS block.')
+          insert_at = styles.find('}', pos)
+          if insert_at == -1:
+              raise SystemExit('Could not locate the end of the staff grid CSS block.')
+          insert_at += 1
+          styles = styles[:insert_at] + '
+
+' + three_css + styles[insert_at:]
+
+          if '.staff-grid-three {' not in styles:
+              raise SystemExit('Three-card staff CSS insertion failed.')
+          if '@media (max-width: 980px)' not in styles or 'repeat(2, minmax(260px, 300px))' not in styles:
+              styles += '
+
+' + tablet_media
+          if '@media (max-width: 680px)' not in styles or '.staff-grid-three {' not in styles.split('@media (max-width: 680px)',1)[-1]:
+              styles += '
+
+' + mobile_media
+
+          index_path.write_text(index, encoding='utf-8')
+          styles_path.write_text(styles, encoding='utf-8')
+
+          final_index = index_path.read_text(encoding='utf-8')
+          final_styles = styles_path.read_text(encoding='utf-8')
+          checks = [
+              'src="assets/staff/pads-lefe.webp?v=1"',
+              '<span>ADMINISTRATOR</span>',
+              '<h3>pads lefe</h3>',
+              'class="staff-grid staff-grid-three"'
+          ]
+          for check in checks:
+              if check not in final_index:
+                  raise SystemExit(f'Final index verification failed: {check}')
+          if final_index.count('<h3>pads lefe</h3>') != 1:
+              raise SystemExit('pads lefe was added more than once.')
+          if '.staff-grid-three {' not in final_styles:
+              raise SystemExit('Three-card staff layout CSS was not added.')
+
+          print('pads lefe is now added to the staff row.')
+
+      - name: Commit actual website files
+        run: |
+          git config user.name "Blackstone Website Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html styles.css assets/staff/pads-lefe.webp
+          if git diff --cached --quiet; then
+            echo "pads lefe is already present on the staff page."
+            exit 0
+          fi
+          git commit -m "Add pads lefe to staff page"
+          git push
