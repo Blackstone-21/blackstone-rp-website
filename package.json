@@ -1,10 +1,10 @@
 {
   "name": "blackstone-rp-website",
-  "version": "5.3.1",
+  "version": "5.3.3",
   "private": true,
   "scripts": {
-    "postinstall": "node build-blackstone-site.cjs && node add-pads-lefe.cjs",
-    "vercel-build": "node build-blackstone-site.cjs && node add-pads-lefe.cjs"
+    "postinstall": "node build-blackstone-site.cjs && node arrange-staff-order.cjs",
+    "vercel-build": "node build-blackstone-site.cjs && node arrange-staff-order.cjs"
   },
   "engines": {
     "node": "22.x"
